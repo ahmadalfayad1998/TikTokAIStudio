@@ -19,6 +19,8 @@ class EasyMainActivity : AppCompatActivity() {
     private var lastVideo: File? = null
     private var lastContent: BackendApiV16.GeneratedContent? = null
     private lateinit var renderButton: Button
+    private lateinit var localPresenterButton: Button
+    private lateinit var realPresenterButton: Button
     private lateinit var imagesStatus: TextView
     private lateinit var scenePreview: ImageView
     private var previewSceneIndex=0
@@ -47,6 +49,10 @@ class EasyMainActivity : AppCompatActivity() {
         autoImagesButton.setOnClickListener { generateAutomaticImages() }
         renderButton=findViewById(R.id.renderBtn)
         renderButton.setOnClickListener { renderVideo() }
+        localPresenterButton=findViewById(R.id.localPresenterBtn)
+        localPresenterButton.setOnClickListener { renderLocalPresenter() }
+        realPresenterButton=findViewById(R.id.realPresenterBtn)
+        realPresenterButton.setOnClickListener { renderRealPresenter() }
         findViewById<Button>(R.id.previewBtn).setOnClickListener { previewVideo() }
         findViewById<Button>(R.id.shareBtn).setOnClickListener { shareVideo() }
         findViewById<Button>(R.id.saveCopyBtn).setOnClickListener { saveProjectCopy() }
@@ -595,6 +601,123 @@ class EasyMainActivity : AppCompatActivity() {
         startActivity(Intent.createChooser(share,"مشاركة الفيديو"))
     }
 
+    private fun setRenderControlsEnabled(enabled:Boolean) {
+        renderButton.isEnabled=enabled
+        localPresenterButton.isEnabled=enabled
+        realPresenterButton.isEnabled=enabled
+    }
+
+    private fun renderLocalPresenter() {
+        val content=lastContent
+        if(content==null) {
+            status.text="أنشئ المحتوى أولاً"
+            return
+        }
+        val plans=scenePlans(content)
+        if(plans.isEmpty()) {
+            status.text="المحتوى لا يحتوي مشاهد صالحة"
+            return
+        }
+        val preflight=AppDiagnostics.renderPreflight(this,emptyList())
+        if(!preflight.ok) {
+            status.text="تعذر بدء المقدم المحلي: "+preflight.message
+            return
+        }
+
+        val narration=plans.joinToString(". ") { it.narration }
+        val captions=plans.map { it.caption }
+        setRenderControlsEnabled(false)
+
+        thread {
+            try {
+                runOnUiThread { status.text="1/4 جاري إنشاء صوت المقدم العربي…" }
+                val voice=ArabicTtsEngine.synthesize(this,narration)
+
+                val mmr=MediaMetadataRetriever()
+                mmr.setDataSource(voice.absolutePath)
+                val duration=mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                    ?.toLongOrNull() ?: 8000L
+                mmr.release()
+
+                runOnUiThread { status.text="2/4 تحريك المقدم ومزامنة الفم مع الصوت…" }
+                val silent=PresenterVideoRenderer.render(
+                    this,
+                    captions,
+                    voice,
+                    duration+350L,
+                    plans.map { it.narration.length }
+                )
+
+                runOnUiThread { status.text="3/4 دمج صوت المقدم مع الفيديو…" }
+                val finalFile=File(getExternalFilesDir(null),"tiktok_ai_final.mp4")
+                val file=AudioVideoMuxer.mux(silent,voice,finalFile)
+
+                lastVideo=file
+                runOnUiThread {
+                    status.text="4/4 تم إنشاء فيديو مقدم محلي ✓ — افتح المعاينة"
+                    setRenderControlsEnabled(true)
+                    saveProject()
+                }
+            } catch(ex:Exception) {
+                AppDiagnostics.logError(this,"local-presenter",ex)
+                runOnUiThread {
+                    status.text="فشل إنشاء المقدم المحلي: "+(ex.message ?: "خطأ غير معروف")
+                    setRenderControlsEnabled(true)
+                }
+            }
+        }
+    }
+
+    private fun renderRealPresenter() {
+        val content=lastContent
+        if(content==null) {
+            status.text="أنشئ المحتوى أولاً"
+            return
+        }
+        val base=backendUrl()
+        if(base.isBlank()) {
+            status.text="المقدم الواقعي يحتاج Backend HTTPS مهيأ على الخادم"
+            return
+        }
+        if(!base.startsWith("https://")) {
+            status.text="المقدم الواقعي يحتاج Backend عام عبر HTTPS"
+            return
+        }
+
+        val plans=scenePlans(content)
+        val narration=plans.joinToString(". ") { it.narration }.trim()
+        if(narration.isBlank()) {
+            status.text="لا يوجد نص صالح للمقدم"
+            return
+        }
+
+        setRenderControlsEnabled(false)
+        status.text="جاري إنشاء رجل واقعي يتكلم… قد يستغرق دقيقة أو دقيقتين"
+
+        thread {
+            try {
+                val generated=BackendApiV16.generatePresenter(base,narration)
+                runOnUiThread {
+                    status.text="تم إنشاء المقدم بصوت "+generated.voiceId+" — جاري تحميل الفيديو…"
+                }
+                val finalFile=File(getExternalFilesDir(null),"tiktok_ai_final.mp4")
+                val file=BackendApiV16.downloadVideo(generated.videoUrl,finalFile)
+                lastVideo=file
+                runOnUiThread {
+                    status.text="تم إنشاء المقدم الواقعي ✓ — افتح المعاينة"
+                    setRenderControlsEnabled(true)
+                    saveProject()
+                }
+            } catch(ex:Exception) {
+                AppDiagnostics.logError(this,"real-presenter",ex)
+                runOnUiThread {
+                    status.text="فشل المقدم الواقعي: "+(ex.message ?: "تحقق من إعداد D-ID في Backend")
+                    setRenderControlsEnabled(true)
+                }
+            }
+        }
+    }
+
     private fun renderVideo() {
         val content=lastContent
         if(content==null) {
@@ -624,7 +747,7 @@ class EasyMainActivity : AppCompatActivity() {
             updateScenePreview()
         }
 
-        renderButton.isEnabled=false
+        setRenderControlsEnabled(false)
         thread {
             try {
                 runOnUiThread { status.text="1/5 تجهيز المشاهد البصرية…" }
@@ -672,7 +795,7 @@ class EasyMainActivity : AppCompatActivity() {
                 lastVideo=file
                 runOnUiThread {
                     status.text="تم إنشاء الفيديو الاحترافي ✓ — افتح المعاينة"
-                    renderButton.isEnabled=true
+                    setRenderControlsEnabled(true)
                     updateScenePreview()
                     saveProject()
                 }
@@ -680,7 +803,7 @@ class EasyMainActivity : AppCompatActivity() {
                 AppDiagnostics.logError(this,"render",ex)
                 runOnUiThread {
                     status.text="فشل إنشاء الفيديو: "+(ex.message ?: "خطأ غير معروف")
-                    renderButton.isEnabled=true
+                    setRenderControlsEnabled(true)
                 }
             }
         }
