@@ -104,6 +104,16 @@
             android:textColor="#FFFFFF"
             android:backgroundTint="#374151"/>
 
+        <Button
+            android:id="@+id/autoImagesBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="✨ توليد صور المشاهد تلقائيًا"
+            android:textAllCaps="false"
+            android:textColor="#061314"
+            android:backgroundTint="#A7F3D0"
+            android:layout_marginTop="6dp"/>
+
         <TextView
             android:id="@+id/imagesStatus"
             android:layout_width="match_parent"
