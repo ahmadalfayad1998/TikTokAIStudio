@@ -108,14 +108,14 @@ class EasyMainActivity : AppCompatActivity() {
         thread {
             try {
                 val info=BackendApiV16.creatorInfo(backendUrl(),session)
-                runOnUiThread { showTikTokPrivacyDialog(info,file,content,session) }
+                runOnUiThread { showTikTokExportDialog(info,file,content,session) }
             } catch(ex:Exception) {
                 runOnUiThread { status.text="تعذر قراءة Creator Info: "+(ex.message ?: "خطأ") }
             }
         }
     }
 
-    private fun showTikTokPrivacyDialog(
+    private fun showTikTokExportDialog(
         info:BackendApiV16.CreatorInfo,
         file:File,
         content:BackendApiV16.GeneratedContent,
@@ -125,22 +125,71 @@ class EasyMainActivity : AppCompatActivity() {
             status.text="TikTok لم يرجع خيارات خصوصية متاحة"
             return
         }
-        val labels=info.privacyOptions.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("اختر خصوصية النشر")
-            .setItems(labels) { _,which ->
-                val privacy=info.privacyOptions[which]
-                val account=(info.nickname.ifBlank { info.username }).ifBlank { "الحساب المرتبط" }
-                AlertDialog.Builder(this)
-                    .setTitle("تأكيد النشر")
-                    .setMessage("سيتم إرسال الفيديو إلى $account عبر TikTok.\nالخصوصية: $privacy\nالفيديو مولّد بالذكاء الاصطناعي وسيُرسل مع وسم AIGC.")
-                    .setNegativeButton("إلغاء",null)
-                    .setPositiveButton("نشر الآن") { _,_ ->
-                        startTikTokPublish(file,content,session,privacy,info)
-                    }.show()
-            }
+        val pad=(16*resources.displayMetrics.density).toInt()
+        val root=LinearLayout(this).apply {
+            orientation=LinearLayout.VERTICAL
+            setPadding(pad,pad/2,pad,pad/2)
+        }
+        val account=(info.nickname.ifBlank { info.username }).ifBlank { "الحساب المرتبط" }
+        root.addView(TextView(this).apply { text="الحساب: $account\nالفيديو مولّد بالذكاء الاصطناعي (AIGC)" })
+
+        val caption=EditText(this).apply {
+            hint="وصف الفيديو"
+            minLines=3
+            maxLines=6
+            setText(buildString {
+                if(content.title.isNotBlank()) append(content.title).append("\n")
+                if(content.description.isNotBlank()) append(content.description).append("\n")
+                if(content.hashtags.isNotEmpty()) append(content.hashtags.joinToString(" "))
+            }.take(2100))
+        }
+        root.addView(caption)
+
+        val privacyItems=listOf("اختر الخصوصية…")+info.privacyOptions
+        val privacy=Spinner(this).apply {
+            adapter=ArrayAdapter(this@EasyMainActivity,android.R.layout.simple_spinner_dropdown_item,privacyItems)
+        }
+        root.addView(privacy)
+
+        val comments=CheckBox(this).apply {
+            text="السماح بالتعليقات"
+            isEnabled=!info.commentDisabled
+            isChecked=false
+        }
+        val duet=CheckBox(this).apply {
+            text="السماح بـ Duet"
+            isEnabled=!info.duetDisabled
+            isChecked=false
+        }
+        val stitch=CheckBox(this).apply {
+            text="السماح بـ Stitch"
+            isEnabled=!info.stitchDisabled
+            isChecked=false
+        }
+        root.addView(comments);root.addView(duet);root.addView(stitch)
+
+        val dialog=AlertDialog.Builder(this)
+            .setTitle("إعداد النشر على TikTok")
+            .setView(root)
             .setNegativeButton("إلغاء",null)
-            .show()
+            .setPositiveButton("نشر",null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if(privacy.selectedItemPosition==0) {
+                    Toast.makeText(this,"اختر خصوصية النشر أولاً",Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                val chosen=info.privacyOptions[privacy.selectedItemPosition-1]
+                val text=caption.text.toString().take(2100)
+                dialog.dismiss()
+                startTikTokPublish(
+                    file,content,session,chosen,info,
+                    text,comments.isChecked,duet.isChecked,stitch.isChecked
+                )
+            }
+        }
+        dialog.show()
     }
 
     private fun startTikTokPublish(
@@ -148,21 +197,20 @@ class EasyMainActivity : AppCompatActivity() {
         content:BackendApiV16.GeneratedContent,
         session:String,
         privacy:String,
-        info:BackendApiV16.CreatorInfo
+        info:BackendApiV16.CreatorInfo,
+        caption:String,
+        allowComment:Boolean,
+        allowDuet:Boolean,
+        allowStitch:Boolean
     ) {
-        val caption=buildString {
-            if(content.title.isNotBlank()) append(content.title).append("\n")
-            if(content.description.isNotBlank()) append(content.description).append("\n")
-            if(content.hashtags.isNotEmpty()) append(content.hashtags.joinToString(" "))
-        }.take(2100)
         status.text="جاري رفع الفيديو إلى TikTok…"
         thread {
             try {
                 val publishId=BackendApiV16.publishFile(
                     backendUrl(),session,file,caption,privacy,
-                    allowComment=!info.commentDisabled,
-                    allowDuet=!info.duetDisabled,
-                    allowStitch=!info.stitchDisabled,
+                    allowComment=allowComment && !info.commentDisabled,
+                    allowDuet=allowDuet && !info.duetDisabled,
+                    allowStitch=allowStitch && !info.stitchDisabled,
                     isAigc=true,
                     coverMs=1000L
                 )
