@@ -15,6 +15,7 @@ class EasyMainActivity : AppCompatActivity() {
     private lateinit var topic: EditText
     private lateinit var result: TextView
     private var lastVideo: File? = null
+    private var lastContent: BackendApiV16.GeneratedContent? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,20 +39,25 @@ class EasyMainActivity : AppCompatActivity() {
     }
 
     private fun renderVideo() {
-        val script=result.text.toString().trim()
-        if(script.isEmpty()) {
+        val content=lastContent
+        if(content==null) {
             status.text="أنشئ المحتوى أولاً"
+            return
+        }
+        val narration=(listOf(content.hook)+content.scenes).filter { it.isNotBlank() }.joinToString(". ")
+        if(narration.isBlank()) {
+            status.text="المحتوى لا يحتوي نصًا صالحًا للصوت"
             return
         }
         status.text="جاري إنشاء الصوت العربي والفيديو العمودي…"
         thread {
             try {
-                val voice=ArabicTtsEngine.synthesize(this, script)
+                val voice=ArabicTtsEngine.synthesize(this, narration)
                 val mmr=MediaMetadataRetriever()
                 mmr.setDataSource(voice.absolutePath)
                 val duration=mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 8000L
                 mmr.release()
-                val silent=SimpleVideoRenderer.render(this, script, duration+500L)
+                val silent=SimpleVideoRenderer.render(this, content.scenes.ifEmpty { listOf(content.hook) }, duration+500L)
                 val finalFile=File(getExternalFilesDir(null),"tiktok_ai_final.mp4")
                 val file=AudioVideoMuxer.mux(silent,voice,finalFile)
                 lastVideo=file
@@ -91,6 +97,7 @@ class EasyMainActivity : AppCompatActivity() {
         thread {
             try {
                 val c=BackendApiV16.generateContent(backend,idea)
+                lastContent=c
                 val text=buildString {
                     if(c.title.isNotBlank()) append("العنوان: ").append(c.title).append("\n\n")
                     if(c.hook.isNotBlank()) append("الافتتاحية: ").append(c.hook).append("\n\n")
