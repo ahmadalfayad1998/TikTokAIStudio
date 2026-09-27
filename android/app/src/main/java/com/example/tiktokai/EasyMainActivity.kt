@@ -3,6 +3,7 @@ package com.example.tiktokai
 import android.content.Intent
 import android.os.Bundle
 import android.net.Uri
+import android.media.MediaMetadataRetriever
 import androidx.core.content.FileProvider
 import java.io.File
 import android.widget.*
@@ -46,7 +47,11 @@ class EasyMainActivity : AppCompatActivity() {
         thread {
             try {
                 val voice=ArabicTtsEngine.synthesize(this, script)
-                val silent=SimpleVideoRenderer.render(this, script)
+                val mmr=MediaMetadataRetriever()
+                mmr.setDataSource(voice.absolutePath)
+                val duration=mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 8000L
+                mmr.release()
+                val silent=SimpleVideoRenderer.render(this, script, duration+500L)
                 val finalFile=File(getExternalFilesDir(null),"tiktok_ai_final.mp4")
                 val file=AudioVideoMuxer.mux(silent,voice,finalFile)
                 lastVideo=file
