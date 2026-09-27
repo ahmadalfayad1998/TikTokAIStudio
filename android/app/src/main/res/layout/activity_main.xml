@@ -149,9 +149,19 @@
             android:layout_height="360dp"
             android:scaleType="centerCrop"
             android:background="@drawable/bg_panel"
+            android:clipToOutline="true"
             android:contentDescription="معاينة أول مشهد"
             android:visibility="gone"
-            android:layout_marginBottom="14dp"/>
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="اضغط على المعاينة للتنقل بين المشاهد"
+            android:textColor="#6B7280"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:layout_marginBottom="12dp"/>
 
         <TextView
             android:layout_width="match_parent"
