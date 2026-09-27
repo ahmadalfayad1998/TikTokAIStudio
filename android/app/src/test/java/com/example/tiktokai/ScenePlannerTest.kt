@@ -21,7 +21,7 @@ class ScenePlannerTest {
         assertEquals(6,plans.size)
         assertEquals(SceneRole.HOOK,plans.first().role)
         assertEquals(SceneRole.CTA,plans.last().role)
-        assertTrue(plans.all { it.caption.length<=79 })
+        assertTrue(plans.all { it.caption.length<=63 })
         assertTrue(plans.all { it.narration.isNotBlank() })
         assertTrue(plans.all { it.visualPrompt.isNotBlank() })
     }
@@ -40,6 +40,6 @@ class ScenePlannerTest {
         val longText="بعد ساعات ستبدأ التأثيرات بالظهور على العمل والتعليم والدفع والخدمات اليومية التي تعتمد على الاتصال المستمر في كل لحظة."
         val plan=ScenePlanner.build("",listOf(longText)).first()
         assertTrue(plan.narration.length>plan.caption.length)
-        assertTrue(plan.caption.endsWith("…") || plan.caption.length<=78)
+        assertTrue(plan.caption.endsWith("…") || plan.caption.length<=62)
     }
 }
