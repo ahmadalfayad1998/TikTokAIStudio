@@ -16,7 +16,7 @@ class SettingsActivityV19 : AppCompatActivity() {
         val prefs=getSharedPreferences("app_settings", MODE_PRIVATE)
         val root=LinearLayout(this).apply {
             orientation=LinearLayout.VERTICAL
-            setPadding(40,40,40,40)
+            setPadding(40,40,40,60)
             setBackgroundColor(Color.rgb(11,13,18))
         }
         fun label(textValue:String)=TextView(this).apply {
@@ -81,7 +81,11 @@ class SettingsActivityV19 : AppCompatActivity() {
         root.addView(tiktokState)
         root.addView(save)
         root.addView(diagnostics)
-        setContentView(root)
+        val scroll=ScrollView(this).apply {
+            setBackgroundColor(Color.rgb(11,13,18))
+            addView(root)
+        }
+        setContentView(scroll)
 
         save.setOnClickListener {
             val value=backend.text.toString().trim().trimEnd('/')
