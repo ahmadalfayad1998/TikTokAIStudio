@@ -13,6 +13,10 @@
    android:text="✨ إنشاء المحتوى"/>
   <TextView android:id="@+id/result" android:layout_width="match_parent" android:layout_height="wrap_content"
    android:textIsSelectable="true" android:paddingTop="12dp" android:paddingBottom="12dp"/>
+  <Button android:id="@+id/pickImagesBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
+   android:text="🖼 اختيار صور للمشاهد"/>
+  <TextView android:id="@+id/imagesStatus" android:layout_width="match_parent" android:layout_height="wrap_content"
+   android:text="لم يتم اختيار صور بعد" android:paddingTop="6dp" android:paddingBottom="8dp"/>
   <Button android:id="@+id/renderBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
    android:text="🎬 إنشاء الفيديو"/>
   <Button android:id="@+id/previewBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
