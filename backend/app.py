@@ -16,8 +16,9 @@ class GenerateRequest(BaseModel):
     topic:str=Field(min_length=2,max_length=300)
     language:str="ar"
 
-SYSTEM="""Return ONLY valid JSON with keys title, hook, description, hashtags, scenes.
+SYSTEM="""Return ONLY valid JSON with keys title, hook, description, hashtags, scenes, visual_prompts.
 hashtags must be an array of strings. scenes must be an array of 5 concise scene texts.
+visual_prompts must be an array with one cinematic vertical-image prompt for the hook followed by one prompt for each scene.
 Create original short-form social video content. Do not include markdown fences."""
 
 def parse_json(text:str):
@@ -26,7 +27,8 @@ def parse_json(text:str):
     return {"title":str(data.get("title","")),"hook":str(data.get("hook","")),
             "description":str(data.get("description","")),
             "hashtags":[str(x) for x in data.get("hashtags",[])][:12],
-            "scenes":[str(x) for x in data.get("scenes",[])][:8]}
+            "scenes":[str(x) for x in data.get("scenes",[])][:8],
+            "visual_prompts":[str(x) for x in data.get("visual_prompts",[])][:9]}
 
 async def ollama(prompt:str):
     url=os.getenv("OLLAMA_URL","http://127.0.0.1:11434").rstrip("/")+"/api/chat"
