@@ -6,6 +6,19 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object BackendApiV16 {
+
+    fun health(base:String):Boolean {
+        val c=URL(base.trimEnd('/')+"/health").openConnection() as HttpURLConnection
+        c.requestMethod="GET"
+        c.connectTimeout=8000
+        c.readTimeout=8000
+        return try {
+            val ok=c.responseCode in 200..299
+            if(ok) c.inputStream.close() else c.errorStream?.close()
+            ok
+        } finally { c.disconnect() }
+    }
+
     data class GeneratedContent(
         val title:String,
         val hook:String,
