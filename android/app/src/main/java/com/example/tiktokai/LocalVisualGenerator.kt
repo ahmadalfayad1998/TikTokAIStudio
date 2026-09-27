@@ -61,6 +61,7 @@ object LocalVisualGenerator {
             Theme.TRAVEL -> drawTravel(canvas,rnd,palette)
             Theme.GENERAL -> drawFlow(canvas,rnd,palette)
         }
+        if(theme!=Theme.TECH) drawRoleTreatment(canvas,palette,index)
 
         val vignette=Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader=RadialGradient(
@@ -515,6 +516,82 @@ object LocalVisualGenerator {
             c.drawPath(path,p)
         }
         drawGlassOrb(c,W*0.68f,H*0.33f,90f,palette[4])
+    }
+
+    private fun drawRoleTreatment(c:Canvas,palette:IntArray,index:Int) {
+        val accent=palette[3]
+        val accent2=palette[4]
+        val soft=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color=Color.argb(42,255,255,255)
+            style=Paint.Style.STROKE
+            strokeWidth=2f
+        }
+        val accentPaint=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color=Color.argb(125,Color.red(accent),Color.green(accent),Color.blue(accent))
+            style=Paint.Style.STROKE
+            strokeWidth=5f
+            strokeCap=Paint.Cap.ROUND
+        }
+        when(index % 6) {
+            0 -> {
+                c.drawCircle(360f,390f,168f,soft)
+                c.drawCircle(360f,390f,112f,accentPaint)
+                drawGlassOrb(c,360f,390f,54f,accent2)
+            }
+            1 -> {
+                for(i in 0..2) {
+                    val top=245f+i*130f
+                    val rect=RectF(110f+i*28f,top,610f-i*28f,top+92f)
+                    c.drawRoundRect(rect,24f,24f,Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color=Color.argb(24+i*7,255,255,255)
+                    })
+                    c.drawRoundRect(rect,24f,24f,soft)
+                    c.drawRoundRect(RectF(rect.left+30f,rect.top+38f,rect.left+120f,rect.top+46f),4f,4f,Paint().apply {
+                        color=if(i==1) accent2 else accent
+                    })
+                }
+            }
+            2 -> {
+                val pts=arrayOf(PointF(100f,600f),PointF(235f,470f),PointF(390f,520f),PointF(560f,335f),PointF(635f,390f))
+                for(i in 0 until pts.lastIndex) c.drawLine(pts[i].x,pts[i].y,pts[i+1].x,pts[i+1].y,accentPaint)
+                pts.forEachIndexed { i,p ->
+                    c.drawCircle(p.x,p.y,if(i==pts.lastIndex)15f else 9f,Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color=if(i==pts.lastIndex) Color.WHITE else accent
+                    })
+                }
+            }
+            3 -> {
+                val left=RectF(72f,275f,325f,650f)
+                val right=RectF(395f,275f,648f,650f)
+                val fill=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=Color.argb(25,255,255,255) }
+                c.drawRoundRect(left,32f,32f,fill); c.drawRoundRect(left,32f,32f,soft)
+                c.drawRoundRect(right,32f,32f,fill); c.drawRoundRect(right,32f,32f,soft)
+                c.drawLine(340f,462f,380f,462f,accentPaint)
+                c.drawLine(365f,447f,380f,462f,accentPaint)
+                c.drawLine(365f,477f,380f,462f,accentPaint)
+            }
+            4 -> {
+                for(i in 0..3) {
+                    val r=65f+i*48f
+                    val p=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color=Color.argb(90-i*14,Color.red(if(i%2==0) accent else accent2),Color.green(if(i%2==0) accent else accent2),Color.blue(if(i%2==0) accent else accent2))
+                        style=Paint.Style.STROKE
+                        strokeWidth=3f+i
+                    }
+                    c.drawCircle(360f,435f,r,p)
+                }
+            }
+            else -> {
+                val horizon=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    shader=LinearGradient(90f,0f,630f,0f,
+                        intArrayOf(Color.TRANSPARENT,accent,accent2,Color.TRANSPARENT),
+                        null,Shader.TileMode.CLAMP)
+                }
+                c.drawRoundRect(RectF(90f,500f,630f,507f),4f,4f,horizon)
+                drawGlassOrb(c,360f,415f,92f,accent)
+                c.drawCircle(360f,415f,145f,soft)
+            }
+        }
     }
 
     private fun drawGlassOrb(c:Canvas,x:Float,y:Float,r:Float,color:Int) {
