@@ -108,7 +108,7 @@ object SimpleVideoRenderer {
         return try {
             val bounds=BitmapFactory.Options().apply { inJustDecodeBounds=true }
             if(uri.scheme=="file") {
-                BitmapFactory.decodeFile(uri.path,null,bounds)
+                uri.path?.let { BitmapFactory.decodeFile(it,bounds) }
             } else {
                 context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it,null,bounds) }
             }
@@ -120,7 +120,7 @@ object SimpleVideoRenderer {
                 inPreferredConfig=Bitmap.Config.ARGB_8888
             }
             if(uri.scheme=="file") {
-                BitmapFactory.decodeFile(uri.path,opts)
+                uri.path?.let { BitmapFactory.decodeFile(it,opts) }
             } else {
                 context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it,null,opts) }
             }
