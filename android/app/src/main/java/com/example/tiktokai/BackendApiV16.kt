@@ -24,7 +24,8 @@ object BackendApiV16 {
         val hook:String,
         val description:String,
         val hashtags:List<String>,
-        val scenes:List<String>
+        val scenes:List<String>,
+        val visualPrompts:List<String> = emptyList()
     )
 
     fun generateContent(base:String, topic:String, language:String="ar"):GeneratedContent {
@@ -42,8 +43,18 @@ object BackendApiV16 {
             data.optString("hook"),
             data.optString("description"),
             array("hashtags"),
-            array("scenes")
+            array("scenes"),
+            array("visual_prompts")
         )
+    }
+
+
+    fun generateVisuals(base:String,prompts:List<String>):List<String> {
+        val arr=org.json.JSONArray()
+        prompts.take(9).forEach { arr.put(it) }
+        val root=jsonPost(base,"/visuals/generate","",JSONObject().put("prompts",arr))
+        val images=root.optJSONArray("images") ?: return emptyList()
+        return (0 until images.length()).map { images.optString(it) }.filter { it.isNotBlank() }
     }
 
     data class CreatorInfo(
