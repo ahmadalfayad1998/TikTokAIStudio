@@ -20,6 +20,7 @@ class EasyMainActivity : AppCompatActivity() {
     private var lastContent: BackendApiV16.GeneratedContent? = null
     private lateinit var renderButton: Button
     private lateinit var imagesStatus: TextView
+    private lateinit var scenePreview: ImageView
     private lateinit var autoImagesButton: Button
     private val selectedImages=mutableListOf<Uri>()
     private val imageRequestCode=701
@@ -32,6 +33,7 @@ class EasyMainActivity : AppCompatActivity() {
         topic=findViewById(R.id.topic)
         result=findViewById(R.id.result)
         imagesStatus=findViewById(R.id.imagesStatus)
+        scenePreview=findViewById(R.id.scenePreview)
 
         findViewById<Button>(R.id.generateBtn).setOnClickListener { generate() }
         findViewById<Button>(R.id.editContentBtn).setOnClickListener { editContent() }
@@ -362,6 +364,7 @@ class EasyMainActivity : AppCompatActivity() {
                     selectedImages.addAll(uris)
                     imagesStatus.text="تم إنشاء "+uris.size+" مشاهد محلية احترافية ✓"
                     status.text="المشاهد جاهزة ✓ — يمكنك إنشاء الفيديو"
+                    updateScenePreview()
                     saveProject()
                 }
             } catch(ex:Exception) {
@@ -410,6 +413,7 @@ class EasyMainActivity : AppCompatActivity() {
                     imagesStatus.text="تم توليد "+newUris.size+" صور AI ✓"
                     status.text="صور AI جاهزة ✓ — يمكنك إنشاء الفيديو"
                     autoImagesButton.isEnabled=true
+                    updateScenePreview()
                     saveProject()
                 }
             } catch(ex:Exception) {
@@ -418,6 +422,18 @@ class EasyMainActivity : AppCompatActivity() {
                     status.text="تعذر توليد صور AI: "+(ex.message ?: "تحقق من مزود الصور في Backend")
                 }
             }
+        }
+    }
+
+    private fun updateScenePreview() {
+        val uri=selectedImages.firstOrNull()
+        if(uri==null) {
+            scenePreview.setImageDrawable(null)
+            scenePreview.visibility=android.view.View.GONE
+        } else {
+            scenePreview.setImageURI(null)
+            scenePreview.setImageURI(uri)
+            scenePreview.visibility=android.view.View.VISIBLE
         }
     }
 
@@ -453,6 +469,7 @@ class EasyMainActivity : AppCompatActivity() {
             for(i in 0 until clip.itemCount) addUri(clip.getItemAt(i).uri)
         } else addUri(data.data)
         imagesStatus.text=if(selectedImages.isEmpty()) "لم يتم اختيار صور" else "تم اختيار "+selectedImages.size+" صورة ✓"
+        updateScenePreview()
         saveProject()
     }
 
@@ -495,7 +512,8 @@ class EasyMainActivity : AppCompatActivity() {
         selectedImages.clear()
         selectedImages.addAll(state.images)
         if(state.content!=null) result.text=displayContent(state.content)
-        imagesStatus.text=if(selectedImages.isEmpty()) "لم يتم اختيار صور بعد" else "تم استرجاع "+selectedImages.size+" صورة ✓"
+        imagesStatus.text=if(selectedImages.isEmpty()) "لم يتم تجهيز مشاهد بعد" else "تم استرجاع "+selectedImages.size+" مشهد ✓"
+        updateScenePreview()
         status.text="تم استرجاع آخر مشروع ✓"
         lastVideo=state.videoPath?.let { File(it) }?.takeIf { it.exists() }
     }
@@ -506,7 +524,8 @@ class EasyMainActivity : AppCompatActivity() {
         selectedImages.clear()
         topic.setText("")
         result.text=""
-        imagesStatus.text="لم يتم اختيار صور بعد"
+        imagesStatus.text="لم يتم تجهيز مشاهد بعد"
+        updateScenePreview()
         status.text="مشروع جديد"
         ProjectStore.clear(this)
     }
@@ -581,6 +600,7 @@ class EasyMainActivity : AppCompatActivity() {
                 runOnUiThread {
                     status.text="تم إنشاء الفيديو الاحترافي ✓ — افتح المعاينة"
                     renderButton.isEnabled=true
+                    updateScenePreview()
                     saveProject()
                 }
             } catch(ex:Exception) {
@@ -645,6 +665,7 @@ class EasyMainActivity : AppCompatActivity() {
                 runOnUiThread {
                     result.text=if(text.isBlank()) "وصل رد من الخادم لكنه لا يحتوي محتوى صالحًا." else text
                     status.text="تم إنشاء المحتوى ✓"
+                    updateScenePreview()
                     saveProject()
                 }
             } catch(ex:Exception) {
@@ -654,6 +675,7 @@ class EasyMainActivity : AppCompatActivity() {
                 runOnUiThread {
                     result.text=text
                     status.text="الخادم غير متصل — تم استخدام المولد المحلي ✓"
+                    updateScenePreview()
                     saveProject()
                 }
             }

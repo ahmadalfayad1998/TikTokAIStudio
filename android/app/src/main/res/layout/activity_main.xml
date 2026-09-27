@@ -141,7 +141,17 @@
             android:text="لم يتم تجهيز مشاهد بعد"
             android:textColor="#9CA3AF"
             android:paddingTop="7dp"
-            android:paddingBottom="14dp"/>
+            android:paddingBottom="10dp"/>
+
+        <ImageView
+            android:id="@+id/scenePreview"
+            android:layout_width="match_parent"
+            android:layout_height="360dp"
+            android:scaleType="centerCrop"
+            android:background="@drawable/bg_panel"
+            android:contentDescription="معاينة أول مشهد"
+            android:visibility="gone"
+            android:layout_marginBottom="14dp"/>
 
         <TextView
             android:layout_width="match_parent"
