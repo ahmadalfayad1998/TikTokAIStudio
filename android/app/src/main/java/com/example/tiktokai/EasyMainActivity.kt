@@ -46,7 +46,9 @@ class EasyMainActivity : AppCompatActivity() {
         thread {
             try {
                 val voice=ArabicTtsEngine.synthesize(this, script)
-                val file=SimpleVideoRenderer.render(this, script)
+                val silent=SimpleVideoRenderer.render(this, script)
+                val finalFile=File(getExternalFilesDir(null),"tiktok_ai_final.mp4")
+                val file=AudioVideoMuxer.mux(silent,voice,finalFile)
                 lastVideo=file
                 runOnUiThread { status.text="تم إنشاء الفيديو ✓ — اضغط معاينة" }
             } catch(ex:Exception) {
@@ -56,7 +58,7 @@ class EasyMainActivity : AppCompatActivity() {
     }
 
     private fun previewVideo() {
-        val file=lastVideo ?: File(getExternalFilesDir(null),"tiktok_ai_latest.mp4")
+        val file=lastVideo ?: File(getExternalFilesDir(null),"tiktok_ai_final.mp4")
         if(!file.exists()) {
             status.text="لا يوجد فيديو بعد — أنشئ الفيديو أولاً"
             return
