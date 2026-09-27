@@ -5,6 +5,7 @@ import tempfile
 from fastapi import Header, UploadFile, File, Form
 from tiktok_service import creator_info, post_status, exchange_code, refresh_token, init_direct_post, upload_file, chunk_plan
 import session_store
+from visual_provider import generate_vertical_image
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
 from urllib.parse import urlencode, quote
@@ -191,3 +192,20 @@ async def tiktok_oauth_callback(code:str="",state:str="",error:str=""):
         return RedirectResponse(app_return+"?session_id="+quote(sid))
     except Exception as e:
         return RedirectResponse(app_return+"?error="+quote(type(e).__name__))
+
+
+class VisualRequest(BaseModel):
+    prompts: list[str]
+
+@app.post("/visuals/generate")
+async def generate_visuals(req:VisualRequest):
+    prompts=[p.strip() for p in req.prompts if p and p.strip()][:9]
+    if not prompts:
+        raise HTTPException(status_code=400,detail="No visual prompts supplied")
+    images=[]
+    try:
+        for prompt in prompts:
+            images.append(await generate_vertical_image(prompt))
+        return {"images":images}
+    except Exception as e:
+        raise HTTPException(status_code=502,detail=f"Visual generation failed: {type(e).__name__}")
