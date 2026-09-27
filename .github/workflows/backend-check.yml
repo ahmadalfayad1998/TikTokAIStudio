@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r backend/requirements.txt pytest
       - name: Compile backend
-        run: python -m py_compile backend/app.py
+        run: python -m compileall -q backend
       - name: Import FastAPI app
         working-directory: backend
         run: python -c "from app import app; print(app.title)"
