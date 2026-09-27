@@ -1,5 +1,6 @@
 package com.example.tiktokai
 
+import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
@@ -59,7 +60,18 @@ object AudioVideoMuxer {
             info.offset = 0
             info.size = size
             info.presentationTimeUs = ex.sampleTime
-            info.flags = ex.sampleFlags
+            val sampleFlags = ex.sampleFlags
+            var codecFlags = 0
+            if ((sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
+                codecFlags = codecFlags or MediaCodec.BUFFER_FLAG_KEY_FRAME
+            }
+            if ((sampleFlags and MediaExtractor.SAMPLE_FLAG_PARTIAL_FRAME) != 0) {
+                codecFlags = codecFlags or MediaCodec.BUFFER_FLAG_PARTIAL_FRAME
+            }
+            if ((sampleFlags and MediaExtractor.SAMPLE_FLAG_ENCRYPTED) != 0) {
+                throw IllegalStateException("لا يمكن دمج عينة وسائط مشفرة")
+            }
+            info.flags = codecFlags
             mux.writeSampleData(track, buffer, info)
             ex.advance()
         }
