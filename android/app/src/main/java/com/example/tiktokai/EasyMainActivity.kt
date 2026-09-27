@@ -63,10 +63,18 @@ class EasyMainActivity : AppCompatActivity() {
                 val duration=mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 8000L
                 mmr.release()
                 runOnUiThread { status.text="3/4 جاري إنشاء الفيديو العمودي…" }
-                val silent=SimpleVideoRenderer.render(this, content.scenes.ifEmpty { listOf(content.hook) }, duration+500L)
-                runOnUiThread { status.text="4/4 جاري دمج الصوت مع الفيديو…" }
+                val silent=try {
+                    SimpleVideoRenderer.render(this, content.scenes.ifEmpty { listOf(content.hook) }, duration+500L)
+                } catch(ex:Exception) {
+                    throw IllegalStateException("المرحلة 3/4: "+(ex.message ?: "فشل ترميز الفيديو"), ex)
+                }
+                runOnUiThread { status.text="4/4 جاري تحويل الصوت إلى AAC ودمجه…" }
                 val finalFile=File(getExternalFilesDir(null),"tiktok_ai_final.mp4")
-                val file=AudioVideoMuxer.mux(silent,voice,finalFile)
+                val file=try {
+                    AudioVideoMuxer.mux(silent,voice,finalFile)
+                } catch(ex:Exception) {
+                    throw IllegalStateException("المرحلة 4/4: "+(ex.message ?: "فشل دمج الصوت والفيديو"), ex)
+                }
                 lastVideo=file
                 runOnUiThread { status.text="تم إنشاء الفيديو ✓ — اضغط معاينة"; renderButton.isEnabled=true }
             } catch(ex:Exception) {
