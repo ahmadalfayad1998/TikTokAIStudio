@@ -3,10 +3,8 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [main]
-    paths:
-      - "TikTokAIStudio-AndroidProject.zip"
-      - ".github/workflows/build-apk.yml"
+    branches:
+      - main
 
 jobs:
   build:
@@ -21,6 +19,12 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
       - name: Set up Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -28,10 +32,11 @@ jobs:
 
       - name: Extract Android project
         run: |
-          mkdir -p android-project
+          rm -rf android-project
+          mkdir android-project
           unzip -q TikTokAIStudio-AndroidProject.zip -d android-project
-          echo "Project extracted"
-          find android-project -maxdepth 3 -type f | head -50
+          test -f android-project/settings.gradle.kts
+          test -f android-project/app/build.gradle.kts
 
       - name: Build debug APK
         working-directory: android-project
