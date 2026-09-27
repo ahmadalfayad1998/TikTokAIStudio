@@ -21,6 +21,9 @@ class EasyMainActivity : AppCompatActivity() {
     private lateinit var renderButton: Button
     private lateinit var imagesStatus: TextView
     private lateinit var scenePreview: ImageView
+    private var previewSceneIndex=0
+    private var previewBitmap:android.graphics.Bitmap?=null
+    private var previewRequestId=0
     private lateinit var autoImagesButton: Button
     private val selectedImages=mutableListOf<Uri>()
     private val imageRequestCode=701
@@ -34,6 +37,7 @@ class EasyMainActivity : AppCompatActivity() {
         result=findViewById(R.id.result)
         imagesStatus=findViewById(R.id.imagesStatus)
         scenePreview=findViewById(R.id.scenePreview)
+        scenePreview.setOnClickListener { cycleScenePreview() }
 
         findViewById<Button>(R.id.generateBtn).setOnClickListener { generate() }
         findViewById<Button>(R.id.editContentBtn).setOnClickListener { editContent() }
@@ -425,16 +429,54 @@ class EasyMainActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateScenePreview() {
-        val uri=selectedImages.firstOrNull()
-        if(uri==null) {
+    private fun previewScenes():List<String> {
+        val content=lastContent ?: return emptyList()
+        return (listOf(content.hook)+content.scenes).filter { it.isNotBlank() }
+    }
+
+    private fun updateScenePreview(reset:Boolean=true) {
+        val scenes=previewScenes()
+        if(reset) previewSceneIndex=0
+
+        if(selectedImages.isEmpty() || scenes.isEmpty()) {
+            previewRequestId++
+            previewBitmap?.recycle()
+            previewBitmap=null
             scenePreview.setImageDrawable(null)
             scenePreview.visibility=android.view.View.GONE
-        } else {
-            scenePreview.setImageURI(null)
-            scenePreview.setImageURI(uri)
-            scenePreview.visibility=android.view.View.VISIBLE
+            return
         }
+
+        previewSceneIndex=previewSceneIndex.coerceIn(0,scenes.lastIndex)
+        scenePreview.visibility=android.view.View.VISIBLE
+        val request=++previewRequestId
+        val images=selectedImages.toList()
+        val sceneCopy=scenes.toList()
+        val index=previewSceneIndex
+
+        thread {
+            val bitmap=SimpleVideoRenderer.previewFrame(this,sceneCopy,images,index)
+            runOnUiThread {
+                if(request!=previewRequestId || isFinishing) {
+                    bitmap?.recycle()
+                    return@runOnUiThread
+                }
+                previewBitmap?.recycle()
+                previewBitmap=bitmap
+                if(bitmap!=null) {
+                    scenePreview.setImageBitmap(bitmap)
+                    scenePreview.contentDescription="معاينة المشهد "+(index+1)+" من "+sceneCopy.size
+                }
+            }
+        }
+    }
+
+    private fun cycleScenePreview() {
+        val scenes=previewScenes()
+        if(selectedImages.isEmpty() || scenes.size<=1) return
+        previewSceneIndex=(previewSceneIndex+1) % scenes.size
+        status.text="معاينة المشهد "+(previewSceneIndex+1)+" / "+scenes.size
+        updateScenePreview(reset=false)
     }
 
     private fun pickImages() {
@@ -682,4 +724,11 @@ class EasyMainActivity : AppCompatActivity() {
             }
         }
     }
+    override fun onDestroy() {
+        previewRequestId++
+        previewBitmap?.recycle()
+        previewBitmap=null
+        super.onDestroy()
+    }
+
 }
