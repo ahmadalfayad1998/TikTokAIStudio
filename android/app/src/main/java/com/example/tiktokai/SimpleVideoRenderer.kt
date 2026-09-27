@@ -1,0 +1,41 @@
+package com.example.tiktokai
+import android.content.Context
+import android.graphics.*
+import android.media.*
+import android.view.Surface
+import java.io.File
+
+object SimpleVideoRenderer {
+ private const val W=720; private const val H=1280; private const val FPS=30; private const val SEC=8
+ fun render(context:Context,text:String):File {
+  val out=File(context.getExternalFilesDir(null),"tiktok_ai_latest.mp4"); if(out.exists()) out.delete()
+  val fmt=MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC,W,H).apply {
+   setInteger(MediaFormat.KEY_COLOR_FORMAT,MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
+   setInteger(MediaFormat.KEY_BIT_RATE,3500000); setInteger(MediaFormat.KEY_FRAME_RATE,FPS); setInteger(MediaFormat.KEY_I_FRAME_INTERVAL,1)
+  }
+  val codec=MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC); codec.configure(fmt,null,null,MediaCodec.CONFIGURE_FLAG_ENCODE)
+  val surface=codec.createInputSurface(); codec.start()
+  val mux=MediaMuxer(out.absolutePath,MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4); val info=MediaCodec.BufferInfo()
+  var track=-1; var started=false
+  try {
+   val lines=wrap(text.replace("\n"," "),32).take(12)
+   for(frame in 0 until FPS*SEC) { draw(surface,lines,frame); while(true) {
+    val i=codec.dequeueOutputBuffer(info,0)
+    if(i==MediaCodec.INFO_TRY_AGAIN_LATER) break
+    if(i==MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) { track=mux.addTrack(codec.outputFormat); mux.start(); started=true }
+    else if(i>=0) { val b=codec.getOutputBuffer(i); if(info.size>0&&started&&b!=null){b.position(info.offset);b.limit(info.offset+info.size);mux.writeSampleData(track,b,info)}; codec.releaseOutputBuffer(i,false) }
+   }}
+   codec.signalEndOfInputStream(); var done=false
+   while(!done){ val i=codec.dequeueOutputBuffer(info,10000); if(i==MediaCodec.INFO_OUTPUT_FORMAT_CHANGED&&track<0){track=mux.addTrack(codec.outputFormat);mux.start();started=true}
+    else if(i>=0){val b=codec.getOutputBuffer(i);if(info.size>0&&started&&b!=null){b.position(info.offset);b.limit(info.offset+info.size);mux.writeSampleData(track,b,info)};done=info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM!=0;codec.releaseOutputBuffer(i,false)}
+   }
+  } finally { codec.stop();codec.release();if(started)mux.stop();mux.release();surface.release() }
+  return out
+ }
+ private fun draw(surface:Surface,lines:List<String>,frame:Int){val c=surface.lockCanvas(null);try{c.drawColor(Color.rgb(12,14,24))
+  val p=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE;textSize=42f;textAlign=Paint.Align.CENTER;typeface=Typeface.create(Typeface.DEFAULT,Typeface.BOLD)}
+  val s=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.LTGRAY;textSize=26f;textAlign=Paint.Align.CENTER}
+  c.drawText("TikTok AI Studio",W/2f,120f,p);var y=300f;lines.forEach{c.drawText(it,W/2f,y,p);y+=58f};c.drawText("AI • "+(frame/FPS+1)+"s",W/2f,H-90f,s)
+ }finally{surface.unlockCanvasAndPost(c)}}
+ private fun wrap(text:String,n:Int):List<String>{val out=mutableListOf<String>();var line="";for(w in text.split(Regex("\\s+")).filter{it.isNotBlank()}){val next=if(line.isEmpty())w else line+" "+w;if(next.length>n&&line.isNotEmpty()){out.add(line);line=w}else line=next};if(line.isNotEmpty())out.add(line);return out}
+}
