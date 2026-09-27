@@ -1,0 +1,22 @@
+name: Backend checks
+on:
+  push:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-check.yml"
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Compile backend
+        run: python -m py_compile backend/app.py
+      - name: Import FastAPI app
+        working-directory: backend
+        run: python -c "from app import app; print(app.title)"
