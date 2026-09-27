@@ -62,14 +62,16 @@ class EasyMainActivity : AppCompatActivity() {
 
 
 
-    private fun backendUrl():String =
-        getSharedPreferences("app_settings",MODE_PRIVATE)
-            .getString("backend","http://10.0.2.2:8765")!!.trimEnd('/')
+    private fun backendUrl():String = DeviceEnvironment.backendUrl(this)
 
     private fun connectTikTok() {
         val base=backendUrl()
-        if(base.contains("10.0.2.2")) {
+        if(base.isBlank()) {
             status.text="ربط TikTok يحتاج Backend عام HTTPS وإعداد TikTok Developer"
+            return
+        }
+        if(!base.startsWith("https://")) {
+            status.text="لربط TikTok استخدم Backend عام عبر HTTPS"
             return
         }
         try {
@@ -337,11 +339,6 @@ class EasyMainActivity : AppCompatActivity() {
             status.text="أنشئ المحتوى أولاً"
             return
         }
-        val base=backendUrl()
-        if(base.contains("10.0.2.2")) {
-            status.text="الصور التلقائية تحتاج Backend متصل ومزود صور مفعّل"
-            return
-        }
         val prompts=content.visualPrompts.ifEmpty {
             (listOf(content.hook)+content.scenes)
                 .filter { it.isNotBlank() }
@@ -351,33 +348,54 @@ class EasyMainActivity : AppCompatActivity() {
             status.text="لا توجد أوصاف بصرية لتوليد الصور"
             return
         }
+
         autoImagesButton.isEnabled=false
-        status.text="جاري توليد صور المشاهد…"
+        status.text="جاري تجهيز صور المشاهد…"
         thread {
+            var source="محلية"
             try {
-                val encoded=BackendApiV16.generateVisuals(base,prompts)
-                if(encoded.isEmpty()) throw IllegalStateException("الخادم لم يرجع صورًا")
-                val dir=File(getExternalFilesDir("visuals"),"generated").apply { mkdirs() }
+                val base=backendUrl()
                 val newUris=mutableListOf<Uri>()
-                encoded.forEachIndexed { index,raw ->
-                    val clean=if(raw.startsWith("data:") && raw.contains(",")) raw.substringAfter(",") else raw
-                    val bytes=Base64.decode(clean,Base64.DEFAULT)
-                    val file=File(dir,"scene_"+(index+1)+".png")
-                    file.writeBytes(bytes)
-                    newUris.add(Uri.fromFile(file))
+
+                if(base.isNotBlank()) {
+                    try {
+                        val encoded=BackendApiV16.generateVisuals(base,prompts)
+                        if(encoded.isNotEmpty()) {
+                            val dir=File(getExternalFilesDir("visuals"),"generated").apply { mkdirs() }
+                            encoded.forEachIndexed { index,raw ->
+                                val clean=if(raw.startsWith("data:") && raw.contains(",")) raw.substringAfter(",") else raw
+                                val bytes=Base64.decode(clean,Base64.DEFAULT)
+                                val file=File(dir,"scene_"+(index+1)+".png")
+                                file.writeBytes(bytes)
+                                newUris.add(Uri.fromFile(file))
+                            }
+                            source="AI"
+                        }
+                    } catch(_:Exception) {
+                        // Fall back to local visuals below.
+                    }
                 }
+
+                if(newUris.isEmpty()) {
+                    newUris.addAll(LocalVisualGenerator.generate(this,prompts))
+                    source="محلية"
+                }
+
                 runOnUiThread {
                     selectedImages.clear()
                     selectedImages.addAll(newUris)
-                    imagesStatus.text="تم توليد "+newUris.size+" صورة تلقائيًا ✓"
-                    status.text="الصور جاهزة ✓ — يمكنك إنشاء الفيديو"
+                    imagesStatus.text="تم إنشاء "+newUris.size+" صورة "+source+" ✓"
+                    status.text=if(source=="AI")
+                        "صور AI جاهزة ✓ — يمكنك إنشاء الفيديو"
+                    else
+                        "صور محلية جاهزة ✓ — أضف Backend لاحقًا لصور AI"
                     autoImagesButton.isEnabled=true
                     saveProject()
                 }
             } catch(ex:Exception) {
                 runOnUiThread {
                     autoImagesButton.isEnabled=true
-                    status.text="تعذر توليد الصور: "+(ex.message ?: "تحقق من مزود الصور في Backend")
+                    status.text="تعذر تجهيز الصور: "+(ex.message ?: "خطأ غير معروف")
                 }
             }
         }
@@ -594,11 +612,10 @@ class EasyMainActivity : AppCompatActivity() {
             status.text="اكتب فكرة الفيديو أولاً"
             return
         }
-        val prefs=getSharedPreferences("app_settings", MODE_PRIVATE)
-        val backend=prefs.getString("backend","http://10.0.2.2:8765") ?: return
-        status.text="جاري إنشاء المحتوى بالذكاء الاصطناعي…"
+        val backend=backendUrl()
+        status.text=if(backend.isBlank()) "جاري إنشاء محتوى محلي…" else "جاري إنشاء المحتوى بالذكاء الاصطناعي…"
         result.text=""
-        if(backend.contains("10.0.2.2")) {
+        if(backend.isBlank()) {
             val c=offlineDemoContent(idea)
             lastContent=c
             result.text=displayContent(c)
