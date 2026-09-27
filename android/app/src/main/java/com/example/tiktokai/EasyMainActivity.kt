@@ -120,6 +120,13 @@ class EasyMainActivity : AppCompatActivity() {
         val backend=prefs.getString("backend","http://10.0.2.2:8765") ?: return
         status.text="جاري إنشاء المحتوى بالذكاء الاصطناعي…"
         result.text=""
+        if(backend.contains("10.0.2.2")) {
+            val c=offlineDemoContent(idea)
+            lastContent=c
+            result.text=displayContent(c)
+            status.text="وضع الاختبار المحلي ✓"
+            return
+        }
         thread {
             try {
                 val c=BackendApiV16.generateContent(backend,idea)
