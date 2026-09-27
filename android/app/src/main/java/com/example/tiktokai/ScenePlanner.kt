@@ -56,9 +56,9 @@ object ScenePlanner {
             .orEmpty()
 
         val candidate=when {
-            firstClause.length in 18..78 -> firstClause
-            clean.length<=78 -> clean
-            else -> shorten(clean,78)
+            firstClause.length in 18..62 -> firstClause
+            clean.length<=62 -> clean
+            else -> shorten(clean,62)
         }
 
         val minUseful=when(role) {
@@ -66,7 +66,7 @@ object ScenePlanner {
             SceneRole.CTA -> 6
             else -> 10
         }
-        return if(candidate.length>=minUseful) candidate else shorten(clean,78)
+        return if(candidate.length>=minUseful) candidate else shorten(clean,62)
     }
 
     private fun roleFor(index:Int,total:Int):SceneRole {
