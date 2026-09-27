@@ -42,9 +42,10 @@ class EasyMainActivity : AppCompatActivity() {
             status.text="أنشئ المحتوى أولاً"
             return
         }
-        status.text="جاري إنشاء فيديو عمودي 720×1280…"
+        status.text="جاري إنشاء الصوت العربي والفيديو العمودي…"
         thread {
             try {
+                val voice=ArabicTtsEngine.synthesize(this, script)
                 val file=SimpleVideoRenderer.render(this, script)
                 lastVideo=file
                 runOnUiThread { status.text="تم إنشاء الفيديو ✓ — اضغط معاينة" }
