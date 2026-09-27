@@ -421,7 +421,12 @@ class EasyMainActivity : AppCompatActivity() {
 
 
     private fun saveProjectCopy() {
-        val state=ProjectStore.State(topic.text.toString(),lastContent,selectedImages.toList())
+        val state=ProjectStore.State(
+            topic.text.toString(),
+            lastContent,
+            selectedImages.toList(),
+            lastVideo?.absolutePath
+        )
         if(state.topic.isBlank() && state.content==null) {
             status.text="لا يوجد مشروع لحفظه"
             return
@@ -436,7 +441,13 @@ class EasyMainActivity : AppCompatActivity() {
     }
 
     private fun saveProject() {
-        ProjectStore.save(this,topic.text.toString(),lastContent,selectedImages)
+        ProjectStore.save(
+            this,
+            topic.text.toString(),
+            lastContent,
+            selectedImages,
+            lastVideo?.absolutePath
+        )
     }
 
     private fun restoreProject() {
@@ -448,8 +459,7 @@ class EasyMainActivity : AppCompatActivity() {
         if(state.content!=null) result.text=displayContent(state.content)
         imagesStatus.text=if(selectedImages.isEmpty()) "لم يتم اختيار صور بعد" else "تم استرجاع "+selectedImages.size+" صورة ✓"
         status.text="تم استرجاع آخر مشروع ✓"
-        val existing=File(getExternalFilesDir(null),"tiktok_ai_final.mp4")
-        if(existing.exists()) lastVideo=existing
+        lastVideo=state.videoPath?.let { File(it) }?.takeIf { it.exists() }
     }
 
     private fun newProject() {
