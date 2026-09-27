@@ -8,6 +8,7 @@ import androidx.core.content.FileProvider
 import java.io.File
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
 import kotlin.concurrent.thread
 
 class EasyMainActivity : AppCompatActivity() {
@@ -36,18 +37,162 @@ class EasyMainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.previewBtn).setOnClickListener { previewVideo() }
         findViewById<Button>(R.id.shareBtn).setOnClickListener { shareVideo() }
         findViewById<Button>(R.id.newProjectBtn).setOnClickListener { newProject() }
-        findViewById<Button>(R.id.connectBtn).setOnClickListener {
-            status.text="ربط TikTok يحتاج Client Key معتمد من TikTok Developer"
-        }
-        findViewById<Button>(R.id.publishBtn).setOnClickListener {
-            status.text="النشر سيتفعّل بعد تسجيل TikTok والتحقق من Creator Info"
-        }
+        findViewById<Button>(R.id.connectBtn).setOnClickListener { connectTikTok() }
+        findViewById<Button>(R.id.publishBtn).setOnClickListener { publishTikTok() }
         findViewById<Button>(R.id.settingsBtn).setOnClickListener {
             startActivity(Intent(this, SettingsActivityV19::class.java))
         }
         restoreProject()
+        handleOAuthIntent(intent)
     }
 
+    override fun onNewIntent(intent:Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleOAuthIntent(intent)
+    }
+
+
+
+    private fun backendUrl():String =
+        getSharedPreferences("app_settings",MODE_PRIVATE)
+            .getString("backend","http://10.0.2.2:8765")!!.trimEnd('/')
+
+    private fun connectTikTok() {
+        val base=backendUrl()
+        if(base.contains("10.0.2.2")) {
+            status.text="ربط TikTok يحتاج Backend عام HTTPS وإعداد TikTok Developer"
+            return
+        }
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(base+"/oauth/tiktok/start")))
+            status.text="تم فتح تسجيل TikTok…"
+        } catch(ex:Exception) {
+            status.text="تعذر فتح صفحة تسجيل TikTok"
+        }
+    }
+
+    private fun handleOAuthIntent(intent:Intent?) {
+        val uri=intent?.data ?: return
+        if(uri.scheme!="tiktokai" || uri.host!="oauth") return
+        val error=uri.getQueryParameter("error")
+        if(!error.isNullOrBlank()) {
+            status.text="فشل ربط TikTok: $error"
+            return
+        }
+        val session=uri.getQueryParameter("session_id")
+        if(!session.isNullOrBlank()) {
+            getSharedPreferences("app_settings",MODE_PRIVATE)
+                .edit().putString("tiktok_session",session).apply()
+            status.text="تم ربط TikTok ✓"
+        }
+    }
+
+    private fun publishTikTok() {
+        val prefs=getSharedPreferences("app_settings",MODE_PRIVATE)
+        val session=prefs.getString("tiktok_session","").orEmpty()
+        if(session.isBlank()) {
+            status.text="اربط حساب TikTok أولاً"
+            return
+        }
+        val file=lastVideo ?: File(getExternalFilesDir(null),"tiktok_ai_final.mp4")
+        if(!file.exists()) {
+            status.text="أنشئ الفيديو أولاً"
+            return
+        }
+        val content=lastContent ?: run {
+            status.text="أنشئ المحتوى أولاً"
+            return
+        }
+        status.text="جاري قراءة إعدادات حساب TikTok…"
+        thread {
+            try {
+                val info=BackendApiV16.creatorInfo(backendUrl(),session)
+                runOnUiThread { showTikTokPrivacyDialog(info,file,content,session) }
+            } catch(ex:Exception) {
+                runOnUiThread { status.text="تعذر قراءة Creator Info: "+(ex.message ?: "خطأ") }
+            }
+        }
+    }
+
+    private fun showTikTokPrivacyDialog(
+        info:BackendApiV16.CreatorInfo,
+        file:File,
+        content:BackendApiV16.GeneratedContent,
+        session:String
+    ) {
+        if(info.privacyOptions.isEmpty()) {
+            status.text="TikTok لم يرجع خيارات خصوصية متاحة"
+            return
+        }
+        val labels=info.privacyOptions.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("اختر خصوصية النشر")
+            .setItems(labels) { _,which ->
+                val privacy=info.privacyOptions[which]
+                val account=(info.nickname.ifBlank { info.username }).ifBlank { "الحساب المرتبط" }
+                AlertDialog.Builder(this)
+                    .setTitle("تأكيد النشر")
+                    .setMessage("سيتم إرسال الفيديو إلى $account عبر TikTok.\nالخصوصية: $privacy\nالفيديو مولّد بالذكاء الاصطناعي وسيُرسل مع وسم AIGC.")
+                    .setNegativeButton("إلغاء",null)
+                    .setPositiveButton("نشر الآن") { _,_ ->
+                        startTikTokPublish(file,content,session,privacy,info)
+                    }.show()
+            }
+            .setNegativeButton("إلغاء",null)
+            .show()
+    }
+
+    private fun startTikTokPublish(
+        file:File,
+        content:BackendApiV16.GeneratedContent,
+        session:String,
+        privacy:String,
+        info:BackendApiV16.CreatorInfo
+    ) {
+        val caption=buildString {
+            if(content.title.isNotBlank()) append(content.title).append("\n")
+            if(content.description.isNotBlank()) append(content.description).append("\n")
+            if(content.hashtags.isNotEmpty()) append(content.hashtags.joinToString(" "))
+        }.take(2100)
+        status.text="جاري رفع الفيديو إلى TikTok…"
+        thread {
+            try {
+                val publishId=BackendApiV16.publishFile(
+                    backendUrl(),session,file,caption,privacy,
+                    allowComment=!info.commentDisabled,
+                    allowDuet=!info.duetDisabled,
+                    allowStitch=!info.stitchDisabled,
+                    isAigc=true,
+                    coverMs=1000L
+                )
+                pollTikTokStatus(session,publishId)
+            } catch(ex:Exception) {
+                runOnUiThread { status.text="فشل إرسال الفيديو إلى TikTok: "+(ex.message ?: "خطأ") }
+            }
+        }
+    }
+
+    private fun pollTikTokStatus(session:String,publishId:String) {
+        repeat(30) { attempt ->
+            try {
+                val s=BackendApiV16.status(backendUrl(),session,publishId)
+                runOnUiThread { status.text="TikTok: $s" }
+                if(s=="PUBLISH_COMPLETE") {
+                    runOnUiThread { status.text="تم النشر على TikTok ✓" }
+                    return
+                }
+                if(s=="FAILED") {
+                    runOnUiThread { status.text="TikTok أبلغ عن فشل النشر" }
+                    return
+                }
+            } catch(_:Exception) {
+                if(attempt==29) runOnUiThread { status.text="تم الرفع، لكن تعذر تأكيد حالة النشر" }
+            }
+            Thread.sleep(3000)
+        }
+        runOnUiThread { status.text="تم إرسال الفيديو وTikTok ما زال يعالجه" }
+    }
 
     private fun pickImages() {
         val intent=Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
