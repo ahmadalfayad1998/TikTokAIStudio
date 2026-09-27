@@ -8,6 +8,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:usesCleartextTraffic="${usesCleartextTraffic}">
         <activity android:name=".SettingsActivityV19" android:exported="false"/>
+        <activity android:name=".ProjectsActivity" android:exported="false"/>
         <activity android:name=".PreviewActivity" android:exported="false" android:screenOrientation="portrait"/>
 <activity android:name=".EasyMainActivity" android:screenOrientation="portrait" android:launchMode="singleTop" android:exported="true">
             <intent-filter>
