@@ -9,11 +9,12 @@ def _credentials():
     if not key or not secret: raise RuntimeError("TikTok server credentials are not configured")
     return key,secret
 
-async def exchange_code(code:str,redirect_uri:str,code_verifier:str):
+async def exchange_code(code:str,redirect_uri:str,code_verifier:str|None=None):
     key,secret=_credentials()
     data={"client_key":key,"client_secret":secret,"code":code,
-          "grant_type":"authorization_code","redirect_uri":redirect_uri,
-          "code_verifier":code_verifier}
+          "grant_type":"authorization_code","redirect_uri":redirect_uri}
+    if code_verifier:
+        data["code_verifier"]=code_verifier
     async with httpx.AsyncClient(timeout=30) as c:
         r=await c.post(API+"/v2/oauth/token/",data=data)
         r.raise_for_status(); return r.json()
