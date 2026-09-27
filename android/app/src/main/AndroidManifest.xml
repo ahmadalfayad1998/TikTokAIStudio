@@ -6,7 +6,7 @@
         android:label="TikTok AI Studio"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="${usesCleartextTraffic}">
         <activity android:name=".SettingsActivityV19" android:exported="false"/>
 <activity android:name=".EasyMainActivity" android:screenOrientation="portrait" android:launchMode="singleTop" android:exported="true">
             <intent-filter>
