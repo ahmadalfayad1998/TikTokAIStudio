@@ -194,7 +194,7 @@ object LocalVisualGenerator {
                 c.drawRoundRect(body,46f,46f,border)
                 c.drawRoundRect(RectF(230f,280f,490f,720f),28f,28f,Paint().apply {
                     shader=LinearGradient(230f,280f,490f,720f,
-                        intArrayOf(Color.argb(80,accent),Color.argb(18,accent2)),
+                        intArrayOf(Color.argb(80,Color.red(accent),Color.green(accent),Color.blue(accent)),Color.argb(18,Color.red(accent2),Color.green(accent2),Color.blue(accent2))),
                         null,Shader.TileMode.CLAMP)
                 })
                 c.drawRoundRect(RectF(306f,235f,414f,246f),6f,6f,Paint().apply { color=white })
@@ -333,7 +333,7 @@ object LocalVisualGenerator {
                     strokeWidth=4f
                 })
                 c.drawRoundRect(RectF(235f,315f,485f,475f),24f,24f,Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color=Color.argb(40,accent)
+                    color=Color.argb(40,Color.red(accent),Color.green(accent),Color.blue(accent))
                 })
                 val card=RectF(120f,520f,405f,700f)
                 c.save(); c.rotate(-12f,card.centerX(),card.centerY())
