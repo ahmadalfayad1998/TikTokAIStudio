@@ -21,6 +21,10 @@
    android:text="🎬 إنشاء الفيديو"/>
   <Button android:id="@+id/previewBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
    android:text="▶ معاينة الفيديو"/>
+  <Button android:id="@+id/shareBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
+   android:text="📤 مشاركة / تصدير الفيديو"/>
+  <Button android:id="@+id/newProjectBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
+   android:text="＋ مشروع جديد"/>
   <Button android:id="@+id/connectBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
    android:text="🔗 ربط TikTok"/>
   <Button android:id="@+id/publishBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
