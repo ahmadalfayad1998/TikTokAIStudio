@@ -118,6 +118,7 @@ async def tiktok_publish_file(
     allow_stitch: bool = Form(True),
     is_aigc: bool = Form(True),
     cover_timestamp_ms: int = Form(0),
+    duration_sec: int = Form(0),
 ):
     access=await session_access_token(session)
     tmp_path=None
@@ -128,6 +129,8 @@ async def tiktok_publish_file(
         if privacy_level not in allowed:
             raise HTTPException(status_code=400,detail="Privacy option is not allowed for this creator")
         max_sec=int(data.get("max_video_post_duration_sec",0) or 0)
+        if max_sec>0 and duration_sec>max_sec:
+            raise HTTPException(status_code=400,detail="Video duration exceeds creator limit")
 
         suffix=".mp4"
         with tempfile.NamedTemporaryFile(delete=False,suffix=suffix) as tmp:
