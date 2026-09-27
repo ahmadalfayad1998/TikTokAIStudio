@@ -625,7 +625,13 @@ class EasyMainActivity : AppCompatActivity() {
 
                 runOnUiThread { status.text="4/5 جاري إنشاء الفيديو العمودي…" }
                 val silent=try {
-                    SimpleVideoRenderer.render(this,captions,duration+500L,renderImages)
+                    SimpleVideoRenderer.render(
+                        this,
+                        captions,
+                        duration+500L,
+                        renderImages,
+                        plans.map { it.narration.length }
+                    )
                 } catch(ex:Exception) {
                     throw IllegalStateException("مرحلة الفيديو: "+(ex.message ?: "فشل ترميز الفيديو"),ex)
                 }
