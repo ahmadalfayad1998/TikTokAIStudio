@@ -7,6 +7,7 @@ from fastapi import Header, UploadFile, File, Form
 from tiktok_service import creator_info, post_status, exchange_code, refresh_token, init_direct_post, upload_file, chunk_plan
 import session_store
 from visual_provider import generate_vertical_image
+from avatar_provider import generate_presenter_video
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
 from urllib.parse import urlencode, quote
@@ -234,3 +235,14 @@ async def generate_visuals(req:VisualRequest):
         return {"images":images,"credits":credits}
     except Exception as e:
         raise HTTPException(status_code=502,detail=f"Visual generation failed: {type(e).__name__}")
+
+
+class PresenterRequest(BaseModel):
+    text: str = Field(min_length=2,max_length=3500)
+
+@app.post("/presenter/generate")
+async def presenter_generate(req:PresenterRequest):
+    try:
+        return await generate_presenter_video(req.text)
+    except Exception as e:
+        raise HTTPException(status_code=502,detail=f"Presenter generation failed: {type(e).__name__}: {str(e)[:240]}")
