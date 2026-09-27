@@ -16,7 +16,8 @@ object ProjectStore {
     data class State(
         val topic:String,
         val content:BackendApiV16.GeneratedContent?,
-        val images:List<Uri>
+        val images:List<Uri>,
+        val videoPath:String? = null
     )
 
     data class SavedProject(
@@ -26,8 +27,14 @@ object ProjectStore {
         val state:State
     )
 
-    fun save(context:Context, topic:String, content:BackendApiV16.GeneratedContent?, images:List<Uri>) {
-        setCurrent(context,State(topic,content,images))
+    fun save(
+        context:Context,
+        topic:String,
+        content:BackendApiV16.GeneratedContent?,
+        images:List<Uri>,
+        videoPath:String? = null
+    ) {
+        setCurrent(context,State(topic,content,images,videoPath))
     }
 
     fun setCurrent(context:Context,state:State) {
@@ -45,10 +52,25 @@ object ProjectStore {
         val title=state.content?.title?.trim().takeUnless { it.isNullOrBlank() }
             ?: state.topic.trim().takeIf { it.isNotBlank() }
             ?: "مشروع بدون عنوان"
-        val item=SavedProject(UUID.randomUUID().toString(),title,now,state)
+        val id=UUID.randomUUID().toString()
+        val archivedVideo=state.videoPath?.let { sourcePath ->
+            runCatching {
+                val source=java.io.File(sourcePath)
+                if(!source.exists()) return@runCatching null
+                val dir=java.io.File(context.getExternalFilesDir("projects"),"videos").apply { mkdirs() }
+                val copy=java.io.File(dir,"project_"+id+".mp4")
+                source.copyTo(copy,overwrite=true)
+                copy.absolutePath
+            }.getOrNull()
+        }
+        val archivedState=state.copy(videoPath=archivedVideo)
+        val item=SavedProject(id,title,now,archivedState)
         val list=listSaved(context).toMutableList()
         list.add(0,item)
-        writeLibrary(context,list.take(MAX_PROJECTS))
+        val keep=list.take(MAX_PROJECTS)
+        val dropped=list.drop(MAX_PROJECTS)
+        dropped.forEach { deleteArchivedVideo(context,it.state.videoPath) }
+        writeLibrary(context,keep)
         return item
     }
 
@@ -78,7 +100,9 @@ object ProjectStore {
     }
 
     fun deleteSaved(context:Context,id:String) {
-        writeLibrary(context,listSaved(context).filterNot { it.id==id })
+        val all=listSaved(context)
+        all.firstOrNull { it.id==id }?.let { deleteArchivedVideo(context,it.state.videoPath) }
+        writeLibrary(context,all.filterNot { it.id==id })
     }
 
     fun clear(context:Context) {
@@ -111,6 +135,7 @@ object ProjectStore {
                 .put("visual_prompts",JSONArray(content.visualPrompts)))
         }
         root.put("images",JSONArray(state.images.map { it.toString() }))
+        if(!state.videoPath.isNullOrBlank()) root.put("video_path",state.videoPath)
         return root
     }
 
@@ -132,6 +157,16 @@ object ProjectStore {
         val uris=if(imgs==null) emptyList() else (0 until imgs.length()).mapNotNull {
             runCatching { Uri.parse(imgs.getString(it)) }.getOrNull()
         }
-        return State(root.optString("topic"),content,uris)
+        val videoPath=root.optString("video_path").takeIf { it.isNotBlank() }
+        return State(root.optString("topic"),content,uris,videoPath)
+    }
+
+    private fun deleteArchivedVideo(context:Context,path:String?) {
+        if(path.isNullOrBlank()) return
+        runCatching {
+            val file=java.io.File(path)
+            val root=context.getExternalFilesDir("projects")?.canonicalPath ?: return@runCatching
+            if(file.canonicalPath.startsWith(root) && file.name.startsWith("project_")) file.delete()
+        }
     }
 }
