@@ -53,6 +53,9 @@ object SimpleVideoRenderer {
         var track=-1
         var started=false
 
+        val frameBitmap=Bitmap.createBitmap(W,H,Bitmap.Config.ARGB_8888)
+        val pixelBuffer=IntArray(W*H)
+        val yuvBuffer=ByteArray(W*H*3/2)
         try {
             for(frame in 0 until frames) {
                 var idx=ends.indexOfFirst { frame < it }
@@ -62,11 +65,10 @@ object SimpleVideoRenderer {
                 val sceneProgress=((frame-sceneStart).toFloat()/(sceneEnd-sceneStart).coerceAtLeast(1)).coerceIn(0f,1f)
                 val image=if(images.isEmpty()) null else images[idx % images.size]
                 val nextImage=if(images.isEmpty() || idx>=safe.lastIndex) null else images[(idx+1) % images.size]
-                val bitmap=drawFrame(
-                    safe[idx],idx,safe.size,frame,frames,image,nextImage,sceneProgress
+                drawFrame(
+                    frameBitmap,safe[idx],idx,safe.size,image,nextImage,sceneProgress
                 )
-                val yuv=argbToI420(bitmap)
-                bitmap.recycle()
+                argbToI420(frameBitmap,pixelBuffer,yuvBuffer)
 
                 var queued=false
                 while(!queued) {
@@ -74,8 +76,8 @@ object SimpleVideoRenderer {
                     if(input>=0) {
                         val b=codec.getInputBuffer(input)!!
                         b.clear()
-                        b.put(yuv)
-                        codec.queueInputBuffer(input,0,yuv.size,frame*1_000_000L/FPS,0)
+                        b.put(yuvBuffer)
+                        codec.queueInputBuffer(input,0,yuvBuffer.size,frame*1_000_000L/FPS,0)
                         queued=true
                     }
                     val state=drain(codec,mux,info,track,started)
@@ -116,6 +118,7 @@ object SimpleVideoRenderer {
                 }
             }
         } finally {
+            if(!frameBitmap.isRecycled) frameBitmap.recycle()
             images.forEach { if(!it.isRecycled) it.recycle() }
             codec.stop()
             codec.release()
@@ -180,18 +183,16 @@ object SimpleVideoRenderer {
     }
 
     private fun drawFrame(
+        target:Bitmap,
         text:String,
         scene:Int,
         total:Int,
-        frame:Int,
-        frames:Int,
         image:Bitmap?,
         nextImage:Bitmap?,
         sceneProgress:Float
-    ):Bitmap {
-        val bm=Bitmap.createBitmap(W,H,Bitmap.Config.ARGB_8888)
-        val canvas=Canvas(bm)
-        canvas.drawColor(Color.rgb(8,10,18))
+    ) {
+        val canvas=Canvas(target)
+        canvas.drawColor(Color.rgb(8,10,18),PorterDuff.Mode.SRC)
 
         if(image!=null) {
             drawCover(canvas,image,sceneProgress,255,if(scene%2==0) 1f else -1f)
@@ -276,7 +277,6 @@ object SimpleVideoRenderer {
         canvas.restore()
 
         drawProgress(canvas,scene,total,sceneProgress)
-        return bm
     }
 
     private fun drawCover(canvas:Canvas,image:Bitmap,progress:Float,alpha:Int,direction:Float) {
@@ -348,10 +348,8 @@ object SimpleVideoRenderer {
         return trimmed.trimEnd(' ',',','،','؛','.')+"…"
     }
 
-    private fun argbToI420(bm:Bitmap):ByteArray {
-        val pixels=IntArray(W*H)
+    private fun argbToI420(bm:Bitmap,pixels:IntArray,out:ByteArray) {
         bm.getPixels(pixels,0,W,0,0,W,H)
-        val out=ByteArray(W*H*3/2)
         var yi=0
         var ui=W*H
         var vi=ui+W*H/4
@@ -366,6 +364,6 @@ object SimpleVideoRenderer {
                 out[vi++]=(((112*r-94*g-18*b+128 shr 8)+128).coerceIn(0,255)).toByte()
             }
         }
-        return out
     }
+
 }
