@@ -6,7 +6,7 @@ import android.view.Surface
 import java.io.File
 
 object SimpleVideoRenderer {
- private const val W=720; private const val H=1280; private const val FPS=30
+ private const val W=720; private const val H=1280; private const val FPS=15
  fun render(context:Context,scenes:List<String>,durationMs:Long=8000L):File {
   val out=File(context.getExternalFilesDir(null),"tiktok_ai_latest.mp4"); if(out.exists()) out.delete()
   val fmt=MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC,W,H).apply {
@@ -24,18 +24,23 @@ object SimpleVideoRenderer {
     val totalFrames=(FPS*seconds).toInt().coerceAtLeast(1)
     val sceneIndex=((frame.toLong()*safeScenes.size)/totalFrames).toInt().coerceIn(0,safeScenes.lastIndex)
     val lines=wrap(safeScenes[sceneIndex].replace("\n"," "),30).take(9)
-    draw(surface,lines,frame,totalFrames,sceneIndex,safeScenes.size); while(true) {
-    val i=codec.dequeueOutputBuffer(info,0)
-    if(i==MediaCodec.INFO_TRY_AGAIN_LATER) break
-    if(i==MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) { track=mux.addTrack(codec.outputFormat); mux.start(); started=true }
-    else if(i>=0) { val b=codec.getOutputBuffer(i); if(info.size>0&&started&&b!=null){b.position(info.offset);b.limit(info.offset+info.size);mux.writeSampleData(track,b,info)}; codec.releaseOutputBuffer(i,false) }
-   }}
+    draw(surface,lines,frame,totalFrames,sceneIndex,safeScenes.size); drain(codec,mux,info,track,started).also { state -> track=state.first; started=state.second };
+   }
    codec.signalEndOfInputStream(); var done=false
    while(!done){ val i=codec.dequeueOutputBuffer(info,10000); if(i==MediaCodec.INFO_OUTPUT_FORMAT_CHANGED&&track<0){track=mux.addTrack(codec.outputFormat);mux.start();started=true}
     else if(i>=0){val b=codec.getOutputBuffer(i);if(info.size>0&&started&&b!=null){b.position(info.offset);b.limit(info.offset+info.size);mux.writeSampleData(track,b,info)};done=info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM!=0;codec.releaseOutputBuffer(i,false)}
    }
   } finally { codec.stop();codec.release();if(started)mux.stop();mux.release();surface.release() }
   return out
+ }
+ private fun drain(codec:MediaCodec,mux:MediaMuxer,info:MediaCodec.BufferInfo,initialTrack:Int,initialStarted:Boolean):Pair<Int,Boolean>{
+  var track=initialTrack;var started=initialStarted
+  while(true){val i=codec.dequeueOutputBuffer(info,1000)
+   if(i==MediaCodec.INFO_TRY_AGAIN_LATER) break
+   if(i==MediaCodec.INFO_OUTPUT_FORMAT_CHANGED&&!started){track=mux.addTrack(codec.outputFormat);mux.start();started=true}
+   else if(i>=0){val b=codec.getOutputBuffer(i);if(info.size>0&&started&&b!=null){b.position(info.offset);b.limit(info.offset+info.size);mux.writeSampleData(track,b,info)};codec.releaseOutputBuffer(i,false)}
+  }
+  return Pair(track,started)
  }
  private fun draw(surface:Surface,lines:List<String>,frame:Int,totalFrames:Int,scene:Int,total:Int){val c=surface.lockCanvas(null);try{c.drawColor(Color.rgb(12,14,24))
   val p=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE;textSize=42f;textAlign=Paint.Align.CENTER;typeface=Typeface.create(Typeface.DEFAULT,Typeface.BOLD)}
