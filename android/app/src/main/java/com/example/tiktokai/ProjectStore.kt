@@ -53,6 +53,18 @@ object ProjectStore {
             ?: state.topic.trim().takeIf { it.isNotBlank() }
             ?: "مشروع بدون عنوان"
         val id=UUID.randomUUID().toString()
+        val archivedImages=state.images.mapIndexed { index,uri ->
+            if(uri.scheme!="file" || uri.path.isNullOrBlank()) return@mapIndexed uri
+            runCatching {
+                val source=java.io.File(uri.path!!)
+                if(!source.exists()) return@runCatching uri
+                val dir=java.io.File(context.getExternalFilesDir("projects"),"images/"+id).apply { mkdirs() }
+                val ext=source.extension.ifBlank { "png" }
+                val copy=java.io.File(dir,"scene_"+(index+1)+"."+ext)
+                source.copyTo(copy,overwrite=true)
+                Uri.fromFile(copy)
+            }.getOrDefault(uri)
+        }
         val archivedVideo=state.videoPath?.let { sourcePath ->
             runCatching {
                 val source=java.io.File(sourcePath)
@@ -63,13 +75,16 @@ object ProjectStore {
                 copy.absolutePath
             }.getOrNull()
         }
-        val archivedState=state.copy(videoPath=archivedVideo)
+        val archivedState=state.copy(images=archivedImages,videoPath=archivedVideo)
         val item=SavedProject(id,title,now,archivedState)
         val list=listSaved(context).toMutableList()
         list.add(0,item)
         val keep=list.take(MAX_PROJECTS)
         val dropped=list.drop(MAX_PROJECTS)
-        dropped.forEach { deleteArchivedVideo(context,it.state.videoPath) }
+        dropped.forEach {
+            deleteArchivedVideo(context,it.state.videoPath)
+            deleteArchivedImages(context,it.id)
+        }
         writeLibrary(context,keep)
         return item
     }
@@ -101,7 +116,10 @@ object ProjectStore {
 
     fun deleteSaved(context:Context,id:String) {
         val all=listSaved(context)
-        all.firstOrNull { it.id==id }?.let { deleteArchivedVideo(context,it.state.videoPath) }
+        all.firstOrNull { it.id==id }?.let {
+            deleteArchivedVideo(context,it.state.videoPath)
+            deleteArchivedImages(context,it.id)
+        }
         writeLibrary(context,all.filterNot { it.id==id })
     }
 
@@ -159,6 +177,13 @@ object ProjectStore {
         }
         val videoPath=root.optString("video_path").takeIf { it.isNotBlank() }
         return State(root.optString("topic"),content,uris,videoPath)
+    }
+
+    private fun deleteArchivedImages(context:Context,id:String) {
+        runCatching {
+            val dir=java.io.File(context.getExternalFilesDir("projects"),"images/"+id)
+            if(dir.exists()) dir.deleteRecursively()
+        }
     }
 
     private fun deleteArchivedVideo(context:Context,path:String?) {
