@@ -429,13 +429,11 @@ class EasyMainActivity : AppCompatActivity() {
             status.text="لا يوجد فيديو بعد — أنشئ الفيديو أولاً"
             return
         }
-        val uri: Uri=FileProvider.getUriForFile(this, packageName+".provider", file)
-        val intent=Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri,"video/mp4")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        val intent=Intent(this,PreviewActivity::class.java).apply {
+            putExtra("video_path",file.absolutePath)
         }
         try { startActivity(intent) } catch(ex:Exception) {
-            status.text="لا يوجد مشغل فيديو متاح على الجهاز"
+            status.text="تعذر فتح معاينة الفيديو"
         }
     }
 
