@@ -9,7 +9,7 @@ DID_BASE="https://api.d-id.com"
 def _settings() -> tuple[str,str,str,float,int]:
     key=os.getenv("DID_API_KEY","").strip()
     presenter=os.getenv("DID_PRESENTER_URL","").strip()
-    voice=os.getenv("DID_VOICE_ID","ar-SA-HamedNeural").strip() or "ar-SA-HamedNeural"
+    voice=os.getenv("DID_VOICE_ID","ar-SY-LaithNeural").strip() or "ar-SY-LaithNeural"
     rate=float(os.getenv("DID_VOICE_RATE","0.95"))
     timeout=int(os.getenv("DID_TIMEOUT_SECONDS","120"))
     if not key:
