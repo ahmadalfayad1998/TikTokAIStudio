@@ -1,6 +1,8 @@
 import json, os, re
 from typing import Literal
 import httpx
+from fastapi import Header
+from tiktok_service import creator_info, post_status
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
@@ -55,3 +57,10 @@ async def generate(req:GenerateRequest):
         return {"data":data}
     except Exception as e:
         raise HTTPException(status_code=502,detail=f"AI generation failed: {type(e).__name__}")
+
+
+@app.get("/tiktok/creator-info")
+async def tiktok_creator(session: str = Header(alias="X-App-Session")):
+    # Token storage is intentionally server-side. Endpoint is activated after
+    # the OAuth session store is configured.
+    raise HTTPException(status_code=501, detail="TikTok OAuth session store is not configured yet")
