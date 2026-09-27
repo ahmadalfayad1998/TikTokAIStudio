@@ -220,9 +220,17 @@ async def generate_visuals(req:VisualRequest):
     if not prompts:
         raise HTTPException(status_code=400,detail="No visual prompts supplied")
     images=[]
+    credits=[]
     try:
         for prompt in prompts:
-            images.append(await generate_vertical_image(prompt))
-        return {"images":images}
+            item=await generate_vertical_image(prompt)
+            images.append(item["image"])
+            credits.append({
+                "provider":item.get("provider",""),
+                "credit":item.get("credit",""),
+                "source_url":item.get("source_url",""),
+                "cached":bool(item.get("cached",False)),
+            })
+        return {"images":images,"credits":credits}
     except Exception as e:
         raise HTTPException(status_code=502,detail=f"Visual generation failed: {type(e).__name__}")
