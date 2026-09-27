@@ -23,6 +23,16 @@ object SimpleVideoRenderer {
         val safe=if(scenes.isEmpty()) listOf(" ") else scenes
         val images=imageUris.mapNotNull { decodeImage(context,it) }
         val frames=((durationMs.coerceIn(3000L,180000L)*FPS+999)/1000).toInt()
+        val weights=safe.map { it.trim().length.coerceAtLeast(12) }
+        val totalWeight=weights.sum().coerceAtLeast(1)
+        val starts=IntArray(safe.size)
+        val ends=IntArray(safe.size)
+        var accWeight=0
+        for(i in safe.indices) {
+            starts[i]=(accWeight.toLong()*frames/totalWeight).toInt()
+            accWeight+=weights[i]
+            ends[i]=(accWeight.toLong()*frames/totalWeight).toInt().coerceAtLeast(starts[i]+1)
+        }
         val format=MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC,W,H).apply {
             setInteger(MediaFormat.KEY_COLOR_FORMAT,MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
             setInteger(MediaFormat.KEY_BIT_RATE,2_500_000)
@@ -38,10 +48,11 @@ object SimpleVideoRenderer {
         var started=false
         try {
             for(frame in 0 until frames) {
-                val idx=((frame.toLong()*safe.size)/frames.coerceAtLeast(1)).toInt().coerceIn(0,safe.lastIndex)
-                val sceneStart=(idx.toLong()*frames/safe.size).toInt()
-                val sceneEnd=(((idx+1).toLong()*frames/safe.size).toInt()).coerceAtLeast(sceneStart+1)
-                val sceneProgress=((frame-sceneStart).toFloat()/(sceneEnd-sceneStart)).coerceIn(0f,1f)
+                var idx=ends.indexOfFirst { frame < it }
+                if(idx<0) idx=safe.lastIndex
+                val sceneStart=starts[idx]
+                val sceneEnd=ends[idx]
+                val sceneProgress=((frame-sceneStart).toFloat()/(sceneEnd-sceneStart).coerceAtLeast(1)).coerceIn(0f,1f)
                 val image=if(images.isEmpty()) null else images[idx % images.size]
                 val bitmap=drawFrame(safe[idx],idx,safe.size,frame,frames,image,sceneProgress)
                 val yuv=argbToI420(bitmap)
@@ -187,6 +198,15 @@ object SimpleVideoRenderer {
         val bar=Paint().apply { color=Color.WHITE }
         c.drawRoundRect(60f,H-72f,W-60f,H-60f,6f,6f,barBg)
         c.drawRoundRect(60f,H-72f,60f+progress,H-60f,6f,6f,bar)
+
+        val fadeAlpha=when {
+            sceneProgress < 0.07f -> (((0.07f-sceneProgress)/0.07f)*110).toInt()
+            sceneProgress > 0.93f -> (((sceneProgress-0.93f)/0.07f)*110).toInt()
+            else -> 0
+        }.coerceIn(0,110)
+        if(fadeAlpha>0) {
+            c.drawColor(Color.argb(fadeAlpha,0,0,0))
+        }
         return bm
     }
 
