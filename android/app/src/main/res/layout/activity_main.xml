@@ -201,6 +201,26 @@
             android:layout_marginTop="6dp"/>
 
         <Button
+            android:id="@+id/saveCopyBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="💾 حفظ نسخة من المشروع"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#374151"
+            android:layout_marginTop="16dp"/>
+
+        <Button
+            android:id="@+id/projectsBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📁 مشاريعي"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#374151"
+            android:layout_marginTop="6dp"/>
+
+        <Button
             android:id="@+id/settingsBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -208,7 +228,7 @@
             android:textAllCaps="false"
             android:textColor="#D1D5DB"
             android:backgroundTint="#1F2937"
-            android:layout_marginTop="16dp"/>
+            android:layout_marginTop="6dp"/>
 
         <Button
             android:id="@+id/newProjectBtn"
