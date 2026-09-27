@@ -52,12 +52,16 @@ class EasyMainActivity : AppCompatActivity() {
         status.text="جاري إنشاء الصوت العربي والفيديو العمودي…"
         thread {
             try {
+                runOnUiThread { status.text="1/4 جاري إنشاء الصوت العربي…" }
                 val voice=ArabicTtsEngine.synthesize(this, narration)
+                runOnUiThread { status.text="2/4 تم الصوت ✓ — جاري قياس المدة…" }
                 val mmr=MediaMetadataRetriever()
                 mmr.setDataSource(voice.absolutePath)
                 val duration=mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 8000L
                 mmr.release()
+                runOnUiThread { status.text="3/4 جاري إنشاء الفيديو العمودي…" }
                 val silent=SimpleVideoRenderer.render(this, content.scenes.ifEmpty { listOf(content.hook) }, duration+500L)
+                runOnUiThread { status.text="4/4 جاري دمج الصوت مع الفيديو…" }
                 val finalFile=File(getExternalFilesDir(null),"tiktok_ai_final.mp4")
                 val file=AudioVideoMuxer.mux(silent,voice,finalFile)
                 lastVideo=file
