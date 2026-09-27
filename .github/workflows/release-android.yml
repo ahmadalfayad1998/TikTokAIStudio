@@ -47,6 +47,12 @@ jobs:
         run: |
           printf "android.useAndroidX=true\nandroid.enableJetifier=true\n" > android/gradle.properties
 
+      - name: Run release quality gates
+        working-directory: android
+        run: |
+          gradle testDebugUnitTest --stacktrace
+          gradle lintDebug --stacktrace
+
       - name: Decode keystore
         run: |
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
