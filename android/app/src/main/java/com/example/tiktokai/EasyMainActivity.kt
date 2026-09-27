@@ -584,27 +584,7 @@ class EasyMainActivity : AppCompatActivity() {
         if(c.hashtags.isNotEmpty()) append(c.hashtags.joinToString(" "))
     }
 
-    private fun offlineDemoContent(idea:String)=BackendApiV16.GeneratedContent(
-        title=idea,
-        hook="تخيل أن هذا حدث فجأة… ماذا ستكون أول ردة فعل لك؟",
-        description="فيديو تجريبي تم إنشاؤه محليًا لاختبار الصوت والمشاهد قبل اتصال خادم الذكاء الاصطناعي.",
-        hashtags=listOf("#ذكاء_اصطناعي","#معلومات","#TikTok"),
-        scenes=listOf(
-            "نبدأ بالسؤال: $idea",
-            "في اللحظات الأولى سيحاول الجميع فهم ما الذي يحدث.",
-            "بعدها تبدأ التأثيرات بالظهور في حياتنا اليومية بشكل واضح.",
-            "بعض النتائج ستكون متوقعة، لكن نتائج أخرى قد تفاجئنا.",
-            "والآن دورك: ماذا تتوقع أن يحدث؟"
-        ),
-        visualPrompts=listOf(
-            "Cinematic vertical image illustrating the hook for: $idea, realistic, dramatic lighting, no text",
-            "Cinematic vertical scene about: $idea, people reacting, realistic, no text",
-            "Cinematic vertical scene showing immediate consequences, realistic, no text",
-            "Cinematic vertical scene showing daily-life impact, realistic, no text",
-            "Cinematic vertical scene showing surprising consequences, realistic, no text",
-            "Cinematic vertical closing scene inviting reflection, realistic, no text"
-        )
-    )
+    private fun offlineContent(idea:String)=LocalContentGenerator.generate(idea)
 
     private fun generate() {
         val idea=topic.text.toString().trim()
@@ -616,10 +596,10 @@ class EasyMainActivity : AppCompatActivity() {
         status.text=if(backend.isBlank()) "جاري إنشاء محتوى محلي…" else "جاري إنشاء المحتوى بالذكاء الاصطناعي…"
         result.text=""
         if(backend.isBlank()) {
-            val c=offlineDemoContent(idea)
+            val c=offlineContent(idea)
             lastContent=c
             result.text=displayContent(c)
-            status.text="وضع الاختبار المحلي ✓"
+            status.text="تم إنشاء محتوى محلي ذكي ✓"
             saveProject()
             return
         }
@@ -634,12 +614,12 @@ class EasyMainActivity : AppCompatActivity() {
                     saveProject()
                 }
             } catch(ex:Exception) {
-                val c=offlineDemoContent(idea)
+                val c=offlineContent(idea)
                 lastContent=c
                 val text=displayContent(c)
                 runOnUiThread {
                     result.text=text
-                    status.text="وضع الاختبار المحلي ✓ — الخادم غير متصل"
+                    status.text="الخادم غير متصل — تم استخدام المولد المحلي ✓"
                     saveProject()
                 }
             }
