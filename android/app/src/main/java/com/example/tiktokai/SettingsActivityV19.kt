@@ -32,8 +32,8 @@ class SettingsActivityV19 : AppCompatActivity() {
             setTextColor(Color.LTGRAY)
         }
         val backend=EditText(this).apply {
-            hint="https://backend.example.com"
-            setText(prefs.getString("backend","http://10.0.2.2:8765"))
+            hint=if(DeviceEnvironment.isEmulator()) "http://10.0.2.2:8765" else "اختياري: https://backend.example.com"
+            setText(DeviceEnvironment.backendUrl(this@SettingsActivityV19))
             setTextColor(Color.WHITE)
             setHintTextColor(Color.GRAY)
         }
@@ -48,6 +48,10 @@ class SettingsActivityV19 : AppCompatActivity() {
         val testStatus=TextView(this).apply {
             setTextColor(Color.LTGRAY)
             setPadding(0,10,0,10)
+            text=if(DeviceEnvironment.isEmulator())
+                "10.0.2.2 يعمل فقط داخل محاكي Android."
+            else
+                "على الهاتف الحقيقي يمكنك ترك Backend فارغًا: الصور المحلية والفيديو يعملان بدون خادم. صور AI وTikTok الحقيقي يحتاجان Backend HTTPS."
         }
 
         root.addView(title)
@@ -69,7 +73,11 @@ class SettingsActivityV19 : AppCompatActivity() {
         test.setOnClickListener {
             val value=backend.text.toString().trim().trimEnd('/')
             if(value.isBlank()) {
-                testStatus.text="اكتب Backend URL أولاً"
+                testStatus.text="لا يوجد Backend. سيستخدم التطبيق الصور المحلية والوضع المحلي."
+                return@setOnClickListener
+            }
+            if(!DeviceEnvironment.isEmulator() && value.contains("10.0.2.2")) {
+                testStatus.text="10.0.2.2 خاص بمحاكي Android ولا يعمل على هاتف حقيقي."
                 return@setOnClickListener
             }
             test.isEnabled=false
