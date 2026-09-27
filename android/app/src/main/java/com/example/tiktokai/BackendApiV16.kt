@@ -92,7 +92,7 @@ object BackendApiV16 {
     fun publishFile(
         base:String, session:String, file:File, title:String, privacy:String,
         allowComment:Boolean, allowDuet:Boolean, allowStitch:Boolean,
-        isAigc:Boolean, coverMs:Long
+        isAigc:Boolean, coverMs:Long, durationSec:Int
     ):String {
         val boundary="----TikTokAIStudio${System.currentTimeMillis()}"
         val c=URL(base.trimEnd('/')+"/tiktok/publish-file").openConnection() as HttpURLConnection
@@ -110,6 +110,7 @@ object BackendApiV16 {
             field("allow_comment",allowComment.toString()); field("allow_duet",allowDuet.toString())
             field("allow_stitch",allowStitch.toString()); field("is_aigc",isAigc.toString())
             field("cover_timestamp_ms",coverMs.toString())
+            field("duration_sec",durationSec.toString())
             out.writeBytes("--$boundary\r\n")
             out.writeBytes("Content-Disposition: form-data; name=\"video\"; filename=\"video.mp4\"\r\n")
             out.writeBytes("Content-Type: video/mp4\r\n\r\n")
