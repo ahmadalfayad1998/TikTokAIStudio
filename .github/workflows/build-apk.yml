@@ -6,6 +6,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,22 +34,36 @@ jobs:
         with:
           gradle-version: "8.7"
 
-      - name: Extract Android project
+      - name: Prepare Android source
         run: |
-          rm -rf android-project
-          mkdir android-project
-          unzip -q TikTokAIStudio-AndroidProject.zip -d android-project
-          test -f android-project/settings.gradle.kts
-          test -f android-project/app/build.gradle.kts
-          printf "android.useAndroidX=true\\nandroid.enableJetifier=true\\n" > android-project/gradle.properties
+          if [ -f android/settings.gradle.kts ]; then
+            echo "Using maintained Android source"
+          else
+            rm -rf android
+            mkdir android
+            unzip -q TikTokAIStudio-AndroidProject.zip -d android
+          fi
+          printf "android.useAndroidX=true\nandroid.enableJetifier=true\n" > android/gradle.properties
+          test -f android/settings.gradle.kts
+          test -f android/app/build.gradle.kts
+
+      - name: Persist extracted source
+        run: |
+          if git status --porcelain android | grep -q .; then
+            git config user.name "TikTokAIStudio Bot"
+            git config user.email "actions@github.com"
+            git add android
+            git commit -m "Extract maintainable Android source"
+            git push
+          fi
 
       - name: Build debug APK
-        working-directory: android-project
+        working-directory: android
         run: gradle assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: TikTokAIStudio-debug-apk
-          path: android-project/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
