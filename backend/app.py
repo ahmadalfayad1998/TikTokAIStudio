@@ -2,6 +2,7 @@ import json, os, re
 from typing import Literal
 import httpx
 import tempfile
+import time
 from fastapi import Header, UploadFile, File, Form
 from tiktok_service import creator_info, post_status, exchange_code, refresh_token, init_direct_post, upload_file, chunk_plan
 import session_store
@@ -66,6 +67,23 @@ async def generate(req:GenerateRequest):
         raise HTTPException(status_code=502,detail=f"AI generation failed: {type(e).__name__}")
 
 
+
+async def session_access_token(session:str)->str:
+    row=session_store.load(session)
+    if not row:
+        raise HTTPException(status_code=401,detail="Invalid TikTok session")
+    access,refresh,expires_at=row
+    if expires_at and int(expires_at) <= int(time.time())+300:
+        try:
+            bundle=await refresh_token(refresh)
+            access=bundle["access_token"]
+            refresh=bundle.get("refresh_token",refresh)
+            new_exp=int(time.time())+int(bundle.get("expires_in",0))
+            session_store.update(session,access,refresh,new_exp)
+        except Exception as e:
+            raise HTTPException(status_code=401,detail=f"TikTok token refresh failed: {type(e).__name__}")
+    return access
+
 class TikTokExchangeRequest(BaseModel):
     code: str
     redirect_uri: str
@@ -75,7 +93,8 @@ class TikTokExchangeRequest(BaseModel):
 async def tiktok_exchange(req:TikTokExchangeRequest):
     try:
         bundle=await exchange_code(req.code,req.redirect_uri,req.code_verifier)
-        sid=session_store.save(bundle["access_token"],bundle["refresh_token"],int(bundle.get("expires_in",0)))
+        expires_at=int(time.time())+int(bundle.get("expires_in",0))
+        sid=session_store.save(bundle["access_token"],bundle["refresh_token"],expires_at)
         return {"session_id":sid,"scope":bundle.get("scope",""),"open_id":bundle.get("open_id","")}
     except Exception as e:
         raise HTTPException(status_code=502,detail=f"TikTok authorization failed: {type(e).__name__}")
@@ -83,9 +102,8 @@ async def tiktok_exchange(req:TikTokExchangeRequest):
 @app.get("/tiktok/creator-info")
 @app.post("/tiktok/creator-info")
 async def tiktok_creator(session: str = Header(alias="X-App-Session")):
-    row=session_store.load(session)
-    if not row: raise HTTPException(status_code=401,detail="Invalid TikTok session")
-    try: return await creator_info(row[0])
+    access=await session_access_token(session)
+    try: return await creator_info(access)
     except Exception as e: raise HTTPException(status_code=502,detail=f"TikTok creator query failed: {type(e).__name__}")
 
 
@@ -101,10 +119,7 @@ async def tiktok_publish_file(
     is_aigc: bool = Form(True),
     cover_timestamp_ms: int = Form(0),
 ):
-    row=session_store.load(session)
-    if not row:
-        raise HTTPException(status_code=401,detail="Invalid TikTok session")
-    access=row[0]
+    access=await session_access_token(session)
     tmp_path=None
     try:
         info=await creator_info(access)
@@ -153,11 +168,9 @@ class PublishStatusRequest(BaseModel):
 
 @app.post("/tiktok/publish/status")
 async def tiktok_publish_status(req:PublishStatusRequest, session: str = Header(alias="X-App-Session")):
-    row=session_store.load(session)
-    if not row:
-        raise HTTPException(status_code=401,detail="Invalid TikTok session")
+    access=await session_access_token(session)
     try:
-        return await post_status(row[0],req.publish_id)
+        return await post_status(access,req.publish_id)
     except Exception as e:
         raise HTTPException(status_code=502,detail=f"TikTok status failed: {type(e).__name__}")
 
@@ -188,7 +201,8 @@ async def tiktok_oauth_callback(code:str="",state:str="",error:str=""):
     redirect_uri=os.getenv("TIKTOK_REDIRECT_URI")
     try:
         bundle=await exchange_code(code,redirect_uri,None)
-        sid=session_store.save(bundle["access_token"],bundle["refresh_token"],int(bundle.get("expires_in",0)))
+        expires_at=int(time.time())+int(bundle.get("expires_in",0))
+        sid=session_store.save(bundle["access_token"],bundle["refresh_token"],expires_at)
         return RedirectResponse(app_return+"?session_id="+quote(sid))
     except Exception as e:
         return RedirectResponse(app_return+"?error="+quote(type(e).__name__))
