@@ -17,8 +17,8 @@ android {
         applicationId = "com.example.tiktokai"
         minSdk = 26
         targetSdk = 35
-        versionCode = 100
-        versionName = "1.0.0-beta1"
+        versionCode = 101
+        versionName = "1.0.0-beta2"
     }
 
     signingConfigs {

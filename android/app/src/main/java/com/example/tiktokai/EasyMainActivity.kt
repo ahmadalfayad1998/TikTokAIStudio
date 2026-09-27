@@ -568,6 +568,7 @@ class EasyMainActivity : AppCompatActivity() {
                             selectedImages.clear()
                             selectedImages.addAll(generated)
                             imagesStatus.text="تم إنشاء "+generated.size+" مشاهد محلية تلقائيًا ✓"
+                            updateScenePreview()
                         }
                     }
                 } else selectedImages.toList()

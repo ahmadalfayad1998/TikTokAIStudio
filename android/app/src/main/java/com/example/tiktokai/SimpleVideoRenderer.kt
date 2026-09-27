@@ -246,9 +246,10 @@ object SimpleVideoRenderer {
             .setTextDirection(TextDirectionHeuristics.FIRSTSTRONG_RTL)
             .setIncludePad(false)
             .setLineSpacing(5f,1.04f)
+            .setMaxLines(4)
             .build()
 
-        val cardTop=(H*0.63f-layout.height*0.5f+lift).coerceIn(660f,900f)
+        val cardTop=(H*0.63f-layout.height*0.5f+lift).coerceIn(650f,820f)
         val cardLeft=54f
         val cardRight=W-54f
         val cardBottom=cardTop+layout.height+92f
@@ -274,7 +275,7 @@ object SimpleVideoRenderer {
         layout.draw(canvas)
         canvas.restore()
 
-        drawProgress(canvas,scene,total,frame,frames)
+        drawProgress(canvas,scene,total,sceneProgress)
         return bm
     }
 
@@ -316,7 +317,7 @@ object SimpleVideoRenderer {
         canvas.drawText(label,rect.centerX(),rect.centerY()+8f,p)
     }
 
-    private fun drawProgress(canvas:Canvas,scene:Int,total:Int,frame:Int,frames:Int) {
+    private fun drawProgress(canvas:Canvas,scene:Int,total:Int,sceneProgress:Float) {
         val y=H-70f
         val gap=12f
         val available=W-108f
@@ -329,10 +330,11 @@ object SimpleVideoRenderer {
                 val done=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=Color.argb(225,255,255,255) }
                 canvas.drawRoundRect(RectF(left,y,left+segment,y+7f),4f,4f,done)
             } else if(i==scene) {
-                val sceneFraction=(frame.toFloat()/frames.coerceAtLeast(1))
-                val local=((sceneFraction*total)-scene).coerceIn(0f,1f)
                 val active=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=Color.rgb(94,234,212) }
-                canvas.drawRoundRect(RectF(left,y,left+segment*local,y+7f),4f,4f,active)
+                canvas.drawRoundRect(
+                    RectF(left,y,left+segment*sceneProgress.coerceIn(0f,1f),y+7f),
+                    4f,4f,active
+                )
             }
         }
     }
