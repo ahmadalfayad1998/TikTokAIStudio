@@ -47,14 +47,17 @@ object SimpleVideoRenderer {
         context:Context,
         scenes:List<String>,
         durationMs:Long=8000L,
-        imageUris:List<Uri> = emptyList()
+        imageUris:List<Uri> = emptyList(),
+        narrationWeights:List<Int> = emptyList()
     ):File {
         val out=File(context.getExternalFilesDir(null),"tiktok_ai_latest.mp4")
         if(out.exists()) out.delete()
         val safe=if(scenes.isEmpty()) listOf(" ") else scenes
         val images=imageUris.mapNotNull { decodeImage(context,it) }
         val frames=((durationMs.coerceIn(3000L,180000L)*FPS+999)/1000).toInt()
-        val weights=safe.map { it.trim().length.coerceIn(20,120) }
+        val weights=safe.indices.map { i ->
+            (narrationWeights.getOrNull(i) ?: safe[i].trim().length).coerceIn(20,220)
+        }
         val totalWeight=weights.sum().coerceAtLeast(1)
         val starts=IntArray(safe.size)
         val ends=IntArray(safe.size)
