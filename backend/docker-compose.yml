@@ -1,0 +1,13 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "8765:8765"
+    env_file:
+      - .env
+    volumes:
+      - tiktok_state:/app/state
+    restart: unless-stopped
+
+volumes:
+  tiktok_state:
