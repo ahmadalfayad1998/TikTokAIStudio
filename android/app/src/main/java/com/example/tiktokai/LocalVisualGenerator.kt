@@ -165,37 +165,64 @@ object LocalVisualGenerator {
     }
 
     private fun drawTech(c:Canvas,rnd:Random,palette:IntArray) {
-        val line=Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color=Color.argb(70,190,245,255)
+        val grid=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color=Color.argb(38,190,245,255)
+            style=Paint.Style.STROKE
+            strokeWidth=1.5f
+        }
+        val horizon=H*0.64f
+        for(i in -5..5) {
+            val x=W/2f+i*66f
+            c.drawLine(W/2f,horizon,x,H*0.96f,grid)
+        }
+        for(i in 0..6) {
+            val y=horizon+i*i*10f
+            c.drawLine(56f,y,W-56f,y,grid)
+        }
+
+        val route=Path()
+        route.moveTo(86f,570f)
+        route.cubicTo(210f,430f,330f,520f,420f,390f)
+        route.cubicTo(500f,285f,575f,340f,642f,250f)
+        val routePaint=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color=Color.argb(145,94,234,212)
+            style=Paint.Style.STROKE
+            strokeWidth=5f
+            strokeCap=Paint.Cap.ROUND
+        }
+        c.drawPath(route,routePaint)
+
+        val nodes=arrayOf(
+            PointF(86f,570f),
+            PointF(230f,465f),
+            PointF(420f,390f),
+            PointF(535f,320f),
+            PointF(642f,250f)
+        )
+        val halo=Paint(Paint.ANTI_ALIAS_FLAG)
+        nodes.forEachIndexed { i,p ->
+            val radius=if(i==nodes.lastIndex) 18f else 12f
+            halo.color=Color.argb(30,94,234,212)
+            c.drawCircle(p.x,p.y,radius*2.8f,halo)
+            halo.color=if(i==nodes.lastIndex) Color.WHITE else palette[3]
+            c.drawCircle(p.x,p.y,radius,halo)
+        }
+
+        val card=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=Color.argb(24,255,255,255) }
+        val border=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color=Color.argb(48,255,255,255)
             style=Paint.Style.STROKE
             strokeWidth=2f
         }
-        val horizon=H*0.61f
-        for(i in -6..6) {
-            val x=W/2f+i*58f
-            c.drawLine(W/2f,horizon,x,H*0.96f,line)
-        }
-        for(i in 0..7) {
-            val y=horizon+i*i*8f
-            c.drawLine(50f,y,W-50f,y,line)
-        }
-        val nodes=mutableListOf<PointF>()
-        repeat(14) {
-            nodes.add(PointF(90f+rnd.nextFloat()*(W-180f),210f+rnd.nextFloat()*520f))
-        }
-        val connector=Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color=Color.argb(55,255,255,255)
-            strokeWidth=2f
-        }
-        nodes.forEachIndexed { i,a ->
-            if(i>0) {
-                val b=nodes[i-1]
-                c.drawLine(a.x,a.y,b.x,b.y,connector)
-            }
-        }
-        val dot=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=palette[3] }
-        nodes.forEach { c.drawCircle(it.x,it.y,4f,dot) }
-        drawGlassOrb(c,W*0.71f,H*0.31f,86f,palette[3])
+        val r1=RectF(92f,245f,276f,342f)
+        val r2=RectF(354f,565f,618f,688f)
+        c.drawRoundRect(r1,24f,24f,card); c.drawRoundRect(r1,24f,24f,border)
+        c.drawRoundRect(r2,24f,24f,card); c.drawRoundRect(r2,24f,24f,border)
+
+        val accent=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=palette[3] }
+        c.drawRoundRect(RectF(118f,276f,205f,283f),4f,4f,accent)
+        c.drawRoundRect(RectF(382f,600f,500f,607f),4f,4f,accent)
+        drawGlassOrb(c,W*0.76f,H*0.22f,62f,palette[4])
     }
 
     private fun drawFinance(c:Canvas,rnd:Random,palette:IntArray) {
