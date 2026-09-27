@@ -36,7 +36,7 @@ def chunk_plan(size:int):
     if size<=0: raise ValueError("empty video")
     if size<5_000_000: return size,1
     if size<=64_000_000: return size,1
-    chunk=64_000_000
+    chunk=10_000_000
     count=size//chunk
     if count>1000: raise ValueError("video requires too many chunks")
     return chunk,int(count)
