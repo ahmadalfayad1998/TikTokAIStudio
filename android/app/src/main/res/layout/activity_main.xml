@@ -1,35 +1,204 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
- android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
- <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-  android:orientation="vertical" android:padding="20dp">
-  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-   android:text="TikTok AI Studio" android:textSize="28sp" android:textStyle="bold"/>
-  <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content"
-   android:text="جاهز" android:paddingTop="8dp" android:paddingBottom="16dp"/>
-  <EditText android:id="@+id/topic" android:layout_width="match_parent" android:layout_height="wrap_content"
-   android:hint="اكتب فكرة الفيديو"/>
-  <Button android:id="@+id/generateBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
-   android:text="✨ إنشاء المحتوى"/>
-  <TextView android:id="@+id/result" android:layout_width="match_parent" android:layout_height="wrap_content"
-   android:textIsSelectable="true" android:paddingTop="12dp" android:paddingBottom="12dp"/>
-  <Button android:id="@+id/pickImagesBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
-   android:text="🖼 اختيار صور للمشاهد"/>
-  <TextView android:id="@+id/imagesStatus" android:layout_width="match_parent" android:layout_height="wrap_content"
-   android:text="لم يتم اختيار صور بعد" android:paddingTop="6dp" android:paddingBottom="8dp"/>
-  <Button android:id="@+id/renderBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
-   android:text="🎬 إنشاء الفيديو"/>
-  <Button android:id="@+id/previewBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
-   android:text="▶ معاينة الفيديو"/>
-  <Button android:id="@+id/shareBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
-   android:text="📤 مشاركة / تصدير الفيديو"/>
-  <Button android:id="@+id/newProjectBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
-   android:text="＋ مشروع جديد"/>
-  <Button android:id="@+id/connectBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
-   android:text="🔗 ربط TikTok"/>
-  <Button android:id="@+id/publishBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
-   android:text="🚀 نشر على TikTok"/>
-  <Button android:id="@+id/settingsBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
-   android:text="⚙ الإعدادات"/>
- </LinearLayout>
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="#0B0D12">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layoutDirection="rtl"
+        android:padding="18dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="TikTok AI Studio"
+            android:textColor="#FFFFFF"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:gravity="start"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="من الفكرة إلى فيديو عربي جاهز للنشر"
+            android:textColor="#9CA3AF"
+            android:textSize="14sp"
+            android:paddingBottom="14dp"/>
+
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="جاهز"
+            android:textColor="#D1FAE5"
+            android:textSize="14sp"
+            android:background="@drawable/bg_status"
+            android:padding="12dp"
+            android:layout_marginBottom="14dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="1. الفكرة والمحتوى"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:paddingBottom="8dp"/>
+
+        <EditText
+            android:id="@+id/topic"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:hint="اكتب فكرة الفيديو"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#6B7280"
+            android:background="@drawable/bg_input"
+            android:padding="14dp"
+            android:singleLine="false"
+            android:maxLines="3"/>
+
+        <Button
+            android:id="@+id/generateBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="✨ إنشاء المحتوى"
+            android:textAllCaps="false"
+            android:textColor="#061314"
+            android:backgroundTint="#5EEAD4"
+            android:layout_marginTop="10dp"/>
+
+        <TextView
+            android:id="@+id/result"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="80dp"
+            android:textIsSelectable="true"
+            android:textColor="#E5E7EB"
+            android:textSize="15sp"
+            android:lineSpacingExtra="5dp"
+            android:background="@drawable/bg_panel"
+            android:padding="14dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="2. صور المشاهد"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:paddingBottom="8dp"/>
+
+        <Button
+            android:id="@+id/pickImagesBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🖼 اختيار صور للمشاهد"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#374151"/>
+
+        <TextView
+            android:id="@+id/imagesStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="لم يتم اختيار صور بعد"
+            android:textColor="#9CA3AF"
+            android:paddingTop="7dp"
+            android:paddingBottom="14dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="3. إنشاء الفيديو"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:paddingBottom="8dp"/>
+
+        <Button
+            android:id="@+id/renderBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🎬 إنشاء الفيديو"
+            android:textAllCaps="false"
+            android:textColor="#061314"
+            android:backgroundTint="#5EEAD4"/>
+
+        <Button
+            android:id="@+id/previewBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="▶ معاينة الفيديو"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#374151"
+            android:layout_marginTop="6dp"/>
+
+        <Button
+            android:id="@+id/shareBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📤 مشاركة / تصدير الفيديو"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#374151"
+            android:layout_marginTop="6dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="4. TikTok"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:paddingTop="14dp"
+            android:paddingBottom="8dp"/>
+
+        <Button
+            android:id="@+id/connectBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🔗 ربط حساب TikTok"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#111827"/>
+
+        <Button
+            android:id="@+id/publishBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🚀 نشر على TikTok"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#FE2C55"
+            android:layout_marginTop="6dp"/>
+
+        <Button
+            android:id="@+id/settingsBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⚙ الإعدادات"
+            android:textAllCaps="false"
+            android:textColor="#D1D5DB"
+            android:backgroundTint="#1F2937"
+            android:layout_marginTop="16dp"/>
+
+        <Button
+            android:id="@+id/newProjectBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="＋ مشروع جديد"
+            android:textAllCaps="false"
+            android:textColor="#9CA3AF"
+            android:backgroundTint="#111827"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="28dp"/>
+    </LinearLayout>
 </ScrollView>
