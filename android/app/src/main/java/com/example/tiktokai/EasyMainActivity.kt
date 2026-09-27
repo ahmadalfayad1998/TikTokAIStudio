@@ -36,6 +36,7 @@ class EasyMainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.generateBtn).setOnClickListener { generate() }
         findViewById<Button>(R.id.editContentBtn).setOnClickListener { editContent() }
         findViewById<Button>(R.id.pickImagesBtn).setOnClickListener { pickImages() }
+        findViewById<Button>(R.id.localScenesBtn).setOnClickListener { generateLocalScenes() }
         autoImagesButton=findViewById(R.id.autoImagesBtn)
         autoImagesButton.setOnClickListener { generateAutomaticImages() }
         renderButton=findViewById(R.id.renderBtn)
@@ -333,69 +334,88 @@ class EasyMainActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    private fun visualPrompts(content:BackendApiV16.GeneratedContent):List<String> {
+        return content.visualPrompts.ifEmpty {
+            (listOf(content.hook)+content.scenes)
+                .filter { it.isNotBlank() }
+                .map { "Cinematic vertical 9:16 scene, no text, no watermark: "+it }
+        }
+    }
+
+    private fun generateLocalScenes() {
+        val content=lastContent
+        if(content==null) {
+            status.text="أنشئ المحتوى أولاً"
+            return
+        }
+        val prompts=visualPrompts(content)
+        if(prompts.isEmpty()) {
+            status.text="لا توجد مشاهد لتجهيزها"
+            return
+        }
+        status.text="جاري إنشاء مشاهد محلية احترافية…"
+        thread {
+            try {
+                val uris=LocalVisualGenerator.generate(this,prompts)
+                runOnUiThread {
+                    selectedImages.clear()
+                    selectedImages.addAll(uris)
+                    imagesStatus.text="تم إنشاء "+uris.size+" مشاهد محلية احترافية ✓"
+                    status.text="المشاهد جاهزة ✓ — يمكنك إنشاء الفيديو"
+                    saveProject()
+                }
+            } catch(ex:Exception) {
+                runOnUiThread {
+                    status.text="تعذر إنشاء المشاهد المحلية: "+(ex.message ?: "خطأ")
+                }
+            }
+        }
+    }
+
     private fun generateAutomaticImages() {
         val content=lastContent
         if(content==null) {
             status.text="أنشئ المحتوى أولاً"
             return
         }
-        val prompts=content.visualPrompts.ifEmpty {
-            (listOf(content.hook)+content.scenes)
-                .filter { it.isNotBlank() }
-                .map { "Cinematic vertical 9:16 scene, no text, no watermark: $it" }
+        val base=backendUrl()
+        if(base.isBlank()) {
+            status.text="صور AI الحقيقية تحتاج Backend متصل. استخدم «مشاهد محلية احترافية» بدون خادم."
+            return
         }
+        val prompts=visualPrompts(content)
         if(prompts.isEmpty()) {
             status.text="لا توجد أوصاف بصرية لتوليد الصور"
             return
         }
 
         autoImagesButton.isEnabled=false
-        status.text="جاري تجهيز صور المشاهد…"
+        status.text="جاري توليد صور AI للمشاهد…"
         thread {
-            var source="محلية"
             try {
-                val base=backendUrl()
+                val encoded=BackendApiV16.generateVisuals(base,prompts)
+                if(encoded.isEmpty()) throw IllegalStateException("الخادم لم يرجع صورًا")
+                val dir=File(getExternalFilesDir("visuals"),"generated").apply { mkdirs() }
                 val newUris=mutableListOf<Uri>()
-
-                if(base.isNotBlank()) {
-                    try {
-                        val encoded=BackendApiV16.generateVisuals(base,prompts)
-                        if(encoded.isNotEmpty()) {
-                            val dir=File(getExternalFilesDir("visuals"),"generated").apply { mkdirs() }
-                            encoded.forEachIndexed { index,raw ->
-                                val clean=if(raw.startsWith("data:") && raw.contains(",")) raw.substringAfter(",") else raw
-                                val bytes=Base64.decode(clean,Base64.DEFAULT)
-                                val file=File(dir,"scene_"+(index+1)+".png")
-                                file.writeBytes(bytes)
-                                newUris.add(Uri.fromFile(file))
-                            }
-                            source="AI"
-                        }
-                    } catch(_:Exception) {
-                        // Fall back to local visuals below.
-                    }
+                encoded.forEachIndexed { index,raw ->
+                    val clean=if(raw.startsWith("data:") && raw.contains(",")) raw.substringAfter(",") else raw
+                    val bytes=Base64.decode(clean,Base64.DEFAULT)
+                    val file=File(dir,"scene_"+(index+1)+".png")
+                    file.writeBytes(bytes)
+                    newUris.add(Uri.fromFile(file))
                 }
-
-                if(newUris.isEmpty()) {
-                    newUris.addAll(LocalVisualGenerator.generate(this,prompts))
-                    source="محلية"
-                }
-
                 runOnUiThread {
                     selectedImages.clear()
                     selectedImages.addAll(newUris)
-                    imagesStatus.text="تم إنشاء "+newUris.size+" صورة "+source+" ✓"
-                    status.text=if(source=="AI")
-                        "صور AI جاهزة ✓ — يمكنك إنشاء الفيديو"
-                    else
-                        "صور محلية جاهزة ✓ — أضف Backend لاحقًا لصور AI"
+                    imagesStatus.text="تم توليد "+newUris.size+" صور AI ✓"
+                    status.text="صور AI جاهزة ✓ — يمكنك إنشاء الفيديو"
                     autoImagesButton.isEnabled=true
                     saveProject()
                 }
             } catch(ex:Exception) {
                 runOnUiThread {
                     autoImagesButton.isEnabled=true
-                    status.text="تعذر تجهيز الصور: "+(ex.message ?: "خطأ غير معروف")
+                    status.text="تعذر توليد صور AI: "+(ex.message ?: "تحقق من مزود الصور في Backend")
                 }
             }
         }
@@ -512,48 +532,62 @@ class EasyMainActivity : AppCompatActivity() {
             status.text="أنشئ المحتوى أولاً"
             return
         }
-        val narration=(listOf(content.hook)+content.scenes).filter { it.isNotBlank() }.joinToString(". ")
+        val scenes=(listOf(content.hook)+content.scenes).filter { it.isNotBlank() }
+        val narration=scenes.joinToString(". ")
         if(narration.isBlank()) {
             status.text="المحتوى لا يحتوي نصًا صالحًا للصوت"
             return
         }
-        status.text="جاري إنشاء الصوت العربي والفيديو العمودي…"
+
         renderButton.isEnabled=false
         thread {
             try {
-                runOnUiThread { status.text="1/4 جاري إنشاء الصوت العربي…" }
-                val voice=ArabicTtsEngine.synthesize(this, narration)
-                runOnUiThread { status.text="2/4 تم الصوت ✓ — جاري قياس المدة…" }
+                runOnUiThread { status.text="1/5 تجهيز المشاهد البصرية…" }
+                val renderImages=if(selectedImages.isEmpty()) {
+                    LocalVisualGenerator.generate(this,visualPrompts(content)).also { generated ->
+                        runOnUiThread {
+                            selectedImages.clear()
+                            selectedImages.addAll(generated)
+                            imagesStatus.text="تم إنشاء "+generated.size+" مشاهد محلية تلقائيًا ✓"
+                        }
+                    }
+                } else selectedImages.toList()
+
+                runOnUiThread { status.text="2/5 جاري إنشاء الصوت العربي…" }
+                val voice=ArabicTtsEngine.synthesize(this,narration)
+
+                runOnUiThread { status.text="3/5 تم الصوت ✓ — جاري ضبط توقيت المشاهد…" }
                 val mmr=MediaMetadataRetriever()
                 mmr.setDataSource(voice.absolutePath)
                 val duration=mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 8000L
                 mmr.release()
-                runOnUiThread { status.text="3/4 جاري إنشاء الفيديو العمودي…" }
+
+                runOnUiThread { status.text="4/5 جاري إنشاء الفيديو العمودي…" }
                 val silent=try {
-                    SimpleVideoRenderer.render(
-                        this,
-                        (listOf(content.hook)+content.scenes).filter { it.isNotBlank() },
-                        duration+500L,
-                        selectedImages
-                    )
+                    SimpleVideoRenderer.render(this,scenes,duration+500L,renderImages)
                 } catch(ex:Exception) {
-                    throw IllegalStateException("المرحلة 3/4: "+(ex.message ?: "فشل ترميز الفيديو"), ex)
+                    throw IllegalStateException("مرحلة الفيديو: "+(ex.message ?: "فشل ترميز الفيديو"),ex)
                 }
-                runOnUiThread { status.text="4/4 جاري تحويل الصوت إلى AAC ودمجه…" }
+
+                runOnUiThread { status.text="5/5 جاري دمج الصوت والفيديو…" }
                 val finalFile=File(getExternalFilesDir(null),"tiktok_ai_final.mp4")
                 val file=try {
                     AudioVideoMuxer.mux(silent,voice,finalFile)
                 } catch(ex:Exception) {
-                    throw IllegalStateException("المرحلة 4/4: "+(ex.message ?: "فشل دمج الصوت والفيديو"), ex)
+                    throw IllegalStateException("مرحلة الدمج: "+(ex.message ?: "فشل دمج الصوت والفيديو"),ex)
                 }
+
                 lastVideo=file
                 runOnUiThread {
-                    status.text="تم إنشاء الفيديو ✓ — يمكنك المعاينة أو المشاركة"
+                    status.text="تم إنشاء الفيديو الاحترافي ✓ — افتح المعاينة"
                     renderButton.isEnabled=true
                     saveProject()
                 }
             } catch(ex:Exception) {
-                runOnUiThread { status.text="فشل إنشاء الفيديو: "+(ex.message ?: "خطأ غير معروف"); renderButton.isEnabled=true }
+                runOnUiThread {
+                    status.text="فشل إنشاء الفيديو: "+(ex.message ?: "خطأ غير معروف")
+                    renderButton.isEnabled=true
+                }
             }
         }
     }
