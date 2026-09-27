@@ -17,6 +17,9 @@ class EasyMainActivity : AppCompatActivity() {
     private var lastVideo: File? = null
     private var lastContent: BackendApiV16.GeneratedContent? = null
     private lateinit var renderButton: Button
+    private lateinit var imagesStatus: TextView
+    private val selectedImages=mutableListOf<Uri>()
+    private val imageRequestCode=701
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,8 +27,10 @@ class EasyMainActivity : AppCompatActivity() {
         status=findViewById(R.id.status)
         topic=findViewById(R.id.topic)
         result=findViewById(R.id.result)
+        imagesStatus=findViewById(R.id.imagesStatus)
 
         findViewById<Button>(R.id.generateBtn).setOnClickListener { generate() }
+        findViewById<Button>(R.id.pickImagesBtn).setOnClickListener { pickImages() }
         renderButton=findViewById(R.id.renderBtn)
         renderButton.setOnClickListener { renderVideo() }
         findViewById<Button>(R.id.previewBtn).setOnClickListener { previewVideo() }
@@ -38,6 +43,34 @@ class EasyMainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.settingsBtn).setOnClickListener {
             startActivity(Intent(this, SettingsActivityV19::class.java))
         }
+    }
+
+
+    private fun pickImages() {
+        val intent=Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            type="image/*"
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true)
+            addCategory(Intent.CATEGORY_OPENABLE)
+        }
+        startActivityForResult(intent,imageRequestCode)
+    }
+
+    @Deprecated("Deprecated in Android API, kept for broad device compatibility")
+    override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
+        super.onActivityResult(requestCode,resultCode,data)
+        if(requestCode!=imageRequestCode || resultCode!=RESULT_OK || data==null) return
+        selectedImages.clear()
+        val flags=data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        fun addUri(uri:Uri?) {
+            if(uri==null || selectedImages.size>=10) return
+            try { contentResolver.takePersistableUriPermission(uri,flags and Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch(_:Exception) {}
+            selectedImages.add(uri)
+        }
+        val clip=data.clipData
+        if(clip!=null) {
+            for(i in 0 until clip.itemCount) addUri(clip.getItemAt(i).uri)
+        } else addUri(data.data)
+        imagesStatus.text=if(selectedImages.isEmpty()) "لم يتم اختيار صور" else "تم اختيار "+selectedImages.size+" صورة ✓"
     }
 
     private fun renderVideo() {
@@ -64,7 +97,7 @@ class EasyMainActivity : AppCompatActivity() {
                 mmr.release()
                 runOnUiThread { status.text="3/4 جاري إنشاء الفيديو العمودي…" }
                 val silent=try {
-                    SimpleVideoRenderer.render(this, content.scenes.ifEmpty { listOf(content.hook) }, duration+500L)
+                    SimpleVideoRenderer.render(this, content.scenes.ifEmpty { listOf(content.hook) }, duration+500L, selectedImages)
                 } catch(ex:Exception) {
                     throw IllegalStateException("المرحلة 3/4: "+(ex.message ?: "فشل ترميز الفيديو"), ex)
                 }
