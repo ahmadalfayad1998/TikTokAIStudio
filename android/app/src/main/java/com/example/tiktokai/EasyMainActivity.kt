@@ -33,6 +33,7 @@ class EasyMainActivity : AppCompatActivity() {
         imagesStatus=findViewById(R.id.imagesStatus)
 
         findViewById<Button>(R.id.generateBtn).setOnClickListener { generate() }
+        findViewById<Button>(R.id.editContentBtn).setOnClickListener { editContent() }
         findViewById<Button>(R.id.pickImagesBtn).setOnClickListener { pickImages() }
         autoImagesButton=findViewById(R.id.autoImagesBtn)
         autoImagesButton.setOnClickListener { generateAutomaticImages() }
@@ -246,6 +247,74 @@ class EasyMainActivity : AppCompatActivity() {
         runOnUiThread { status.text="تم إرسال الفيديو وTikTok ما زال يعالجه" }
     }
 
+
+
+    private fun editContent() {
+        val current=lastContent
+        if(current==null) {
+            status.text="أنشئ المحتوى أولاً"
+            return
+        }
+        val scroll=ScrollView(this)
+        val root=LinearLayout(this).apply {
+            orientation=LinearLayout.VERTICAL
+            val p=(16*resources.displayMetrics.density).toInt()
+            setPadding(p,p/2,p,p/2)
+        }
+        fun field(hintText:String,value:String,min:Int=1):EditText {
+            return EditText(this).apply {
+                hint=hintText
+                setText(value)
+                minLines=min
+                maxLines=if(min>1) 8 else 3
+            }
+        }
+        val titleField=field("العنوان",current.title)
+        val hookField=field("الافتتاحية",current.hook,2)
+        val scenesField=field("المشاهد — كل مشهد في سطر",current.scenes.joinToString("\n"),5)
+        val descField=field("الوصف",current.description,3)
+        val tagsField=field("الهاشتاغات",current.hashtags.joinToString(" "))
+        root.addView(titleField)
+        root.addView(hookField)
+        root.addView(scenesField)
+        root.addView(descField)
+        root.addView(tagsField)
+        scroll.addView(root)
+
+        val dialog=AlertDialog.Builder(this)
+            .setTitle("تعديل المحتوى")
+            .setView(scroll)
+            .setNegativeButton("إلغاء",null)
+            .setPositiveButton("حفظ",null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val scenes=scenesField.text.toString().lines()
+                    .map { it.trim() }.filter { it.isNotBlank() }.take(8)
+                if(scenes.isEmpty()) {
+                    Toast.makeText(this,"أضف مشهدًا واحدًا على الأقل",Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                val tags=tagsField.text.toString()
+                    .split(Regex("\\s+")).map { it.trim() }.filter { it.isNotBlank() }.take(12)
+                val updated=current.copy(
+                    title=titleField.text.toString().trim(),
+                    hook=hookField.text.toString().trim(),
+                    description=descField.text.toString().trim(),
+                    hashtags=tags,
+                    scenes=scenes,
+                    visualPrompts=emptyList()
+                )
+                lastContent=updated
+                result.text=displayContent(updated)
+                saveProject()
+                status.text="تم حفظ تعديلات المحتوى ✓"
+                dialog.dismiss()
+            }
+        }
+        dialog.show()
+    }
 
     private fun generateAutomaticImages() {
         val content=lastContent
