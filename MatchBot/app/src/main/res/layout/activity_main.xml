@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="MatchBot"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="مساعد تجريبي لـ Match Factory. فعّل خدمة الوصول، افتح اللعبة، ثم استخدم زر MatchBot العائم لبدء أو إيقاف اللعب الآلي."
+            android:textSize="17sp" />
+
+        <Button
+            android:id="@+id/openAccessibilityButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="فتح إعدادات إمكانية الوصول" />
+
+        <TextView
+            android:id="@+id/serviceStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="الحالة: غير معروفة"
+            android:textSize="16sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="درجة الثقة المطلوبة"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <SeekBar
+            android:id="@+id/confidenceSeek"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="90"
+            android:progress="65" />
+
+        <TextView
+            android:id="@+id/confidenceValue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="96.5%" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="سرعة إعادة التحليل"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <SeekBar
+            android:id="@+id/intervalSeek"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="1000"
+            android:progress="350" />
+
+        <TextView
+            android:id="@+id/intervalValue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="850 ms" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="مهم: ابدأ بثقة مرتفعة. إذا ضغط على عناصر خاطئة ارفع الثقة، وإذا لم يضغط إطلاقًا اخفضها قليلًا. النسخة الحالية تجريبية وتحتاج لقطات من لعبتك لتحسين التعرّف."
+            android:textSize="15sp" />
+
+    </LinearLayout>
+</ScrollView>
