@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+# Secrets and runtime state
+.env
+backend/.env
+backend/tokens.sqlite3
+tokens.sqlite3
+# Android
+android/.gradle/
+android/app/build/
