@@ -57,6 +57,68 @@ object BackendApiV16 {
         return (0 until images.length()).map { images.optString(it) }.filter { it.isNotBlank() }
     }
 
+
+    data class PresenterResult(
+        val videoUrl:String,
+        val talkId:String,
+        val voiceId:String,
+        val provider:String
+    )
+
+    fun generatePresenter(base:String,text:String):PresenterResult {
+        val connection=URL(base.trimEnd('/')+"/presenter/generate").openConnection() as HttpURLConnection
+        connection.requestMethod="POST"
+        connection.doOutput=true
+        connection.connectTimeout=20000
+        connection.readTimeout=180000
+        connection.setRequestProperty("Content-Type","application/json; charset=UTF-8")
+        val body=JSONObject().put("text",text.take(3500)).toString().toByteArray(Charsets.UTF_8)
+        connection.outputStream.use { it.write(body) }
+        val responseCode=connection.responseCode
+        val response=(if(responseCode in 200..299) connection.inputStream else connection.errorStream)
+            .bufferedReader().use { it.readText() }
+        connection.disconnect()
+        if(responseCode !in 200..299) throw IOException(response)
+        val root=JSONObject(response)
+        val url=root.optString("video_url")
+        if(!url.startsWith("https://")) throw IOException("Presenter response is missing HTTPS video URL")
+        return PresenterResult(
+            videoUrl=url,
+            talkId=root.optString("talk_id"),
+            voiceId=root.optString("voice_id"),
+            provider=root.optString("provider")
+        )
+    }
+
+    fun downloadVideo(url:String,output:File):File {
+        if(!url.startsWith("https://")) throw IOException("Only HTTPS presenter video URLs are allowed")
+        if(output.exists()) output.delete()
+        val c=URL(url).openConnection() as HttpURLConnection
+        c.requestMethod="GET"
+        c.connectTimeout=20000
+        c.readTimeout=180000
+        c.instanceFollowRedirects=true
+        val code=c.responseCode
+        if(code !in 200..299) {
+            val msg=c.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            c.disconnect()
+            throw IOException("Presenter video download failed: HTTP "+code+" "+msg.take(160))
+        }
+        val type=c.contentType.orEmpty()
+        if(type.isNotBlank() && !type.startsWith("video/") && !type.startsWith("application/octet-stream")) {
+            c.disconnect()
+            throw IOException("Unexpected presenter content type: "+type)
+        }
+        output.outputStream().use { out ->
+            c.inputStream.use { input -> input.copyTo(out,1024*1024) }
+        }
+        c.disconnect()
+        if(!output.exists() || output.length()<1024L) {
+            throw IOException("Presenter video file is empty")
+        }
+        return output
+    }
+
     data class CreatorInfo(
         val username:String, val nickname:String, val privacyOptions:List<String>,
         val commentDisabled:Boolean, val duetDisabled:Boolean, val stitchDisabled:Boolean,
