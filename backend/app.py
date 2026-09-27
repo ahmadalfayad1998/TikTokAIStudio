@@ -2,7 +2,8 @@ import json, os, re
 from typing import Literal
 import httpx
 from fastapi import Header
-from tiktok_service import creator_info, post_status
+from tiktok_service import creator_info, post_status, exchange_code, refresh_token
+import session_store
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
@@ -59,8 +60,23 @@ async def generate(req:GenerateRequest):
         raise HTTPException(status_code=502,detail=f"AI generation failed: {type(e).__name__}")
 
 
+class TikTokExchangeRequest(BaseModel):
+    code: str
+    redirect_uri: str
+    code_verifier: str
+
+@app.post("/oauth/tiktok/exchange")
+async def tiktok_exchange(req:TikTokExchangeRequest):
+    try:
+        bundle=await exchange_code(req.code,req.redirect_uri,req.code_verifier)
+        sid=session_store.save(bundle["access_token"],bundle["refresh_token"],int(bundle.get("expires_in",0)))
+        return {"session_id":sid,"scope":bundle.get("scope",""),"open_id":bundle.get("open_id","")}
+    except Exception as e:
+        raise HTTPException(status_code=502,detail=f"TikTok authorization failed: {type(e).__name__}")
+
 @app.get("/tiktok/creator-info")
 async def tiktok_creator(session: str = Header(alias="X-App-Session")):
-    # Token storage is intentionally server-side. Endpoint is activated after
-    # the OAuth session store is configured.
-    raise HTTPException(status_code=501, detail="TikTok OAuth session store is not configured yet")
+    row=session_store.load(session)
+    if not row: raise HTTPException(status_code=401,detail="Invalid TikTok session")
+    try: return await creator_info(row[0])
+    except Exception as e: raise HTTPException(status_code=502,detail=f"TikTok creator query failed: {type(e).__name__}")
