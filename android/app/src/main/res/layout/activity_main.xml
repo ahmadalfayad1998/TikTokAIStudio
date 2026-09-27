@@ -94,12 +94,65 @@
             android:textColor="#FFFFFF"
             android:backgroundTint="#374151"
             android:layout_marginTop="6dp"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="18dp"/>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="2. المشاهد البصرية"
+            android:text="2. المقدم المتكلم"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:paddingBottom="6dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="اختر هذا المسار إذا أردت شخصًا يتكلم بدل الخلفيات والرسومات."
+            android:textColor="#9CA3AF"
+            android:textSize="13sp"
+            android:paddingBottom="8dp"/>
+
+        <Button
+            android:id="@+id/localPresenterBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🧑‍💼 مقدم محلي متحرك — يعمل بدون خادم"
+            android:textAllCaps="false"
+            android:textColor="#061314"
+            android:backgroundTint="#5EEAD4"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="المقدم المحلي مرسوم ومتحرك؛ يمكنك اختيار صوت الجهاز من الإعدادات."
+            android:textColor="#6B7280"
+            android:textSize="12sp"
+            android:paddingTop="4dp"
+            android:paddingBottom="8dp"/>
+
+        <Button
+            android:id="@+id/realPresenterBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="👤 رجل واقعي AI + صوت رجل Neural — Backend"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#4F46E5"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="الوضع الواقعي يحتاج Backend HTTPS ومزوّد أفاتار مفعّل؛ المفاتيح لا تدخل داخل APK."
+            android:textColor="#6B7280"
+            android:textSize="12sp"
+            android:paddingTop="4dp"
+            android:paddingBottom="18dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="3. مشاهد بصرية اختيارية"
             android:textColor="#FFFFFF"
             android:textSize="18sp"
             android:textStyle="bold"
@@ -109,7 +162,7 @@
             android:id="@+id/pickImagesBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="🖼 اختيار صور للمشاهد"
+            android:text="🖼 اختيار صور من الهاتف"
             android:textAllCaps="false"
             android:textColor="#FFFFFF"
             android:backgroundTint="#374151"/>
@@ -118,17 +171,17 @@
             android:id="@+id/localScenesBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="✨ إنشاء مشاهد محلية احترافية"
+            android:text="🎨 إنشاء مشاهد رسومية محلية"
             android:textAllCaps="false"
-            android:textColor="#061314"
-            android:backgroundTint="#A7F3D0"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#374151"
             android:layout_marginTop="6dp"/>
 
         <Button
             android:id="@+id/autoImagesBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="🤖 توليد صور AI حقيقية"
+            android:text="🤖 صور AI / صور حقيقية عبر Backend"
             android:textAllCaps="false"
             android:textColor="#FFFFFF"
             android:backgroundTint="#4F46E5"
@@ -150,74 +203,46 @@
             android:scaleType="centerCrop"
             android:background="@drawable/bg_panel"
             android:clipToOutline="true"
-            android:contentDescription="معاينة أول مشهد"
+            android:contentDescription="معاينة المشهد"
             android:visibility="gone"
             android:layout_marginBottom="8dp"/>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="اضغط على المعاينة للتنقل بين المشاهد"
+            android:text="عند ظهور المعاينة اضغط عليها للتنقل بين المشاهد"
             android:textColor="#6B7280"
             android:textSize="12sp"
             android:gravity="center"
             android:layout_marginBottom="12dp"/>
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="3. اختر نوع الفيديو"
-            android:textColor="#FFFFFF"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:paddingBottom="8dp"/>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="إذا أردت شخصًا يتكلم اختر أحد وضعي المقدم. فيديو المشاهد يبقى خيارًا منفصلًا."
-            android:textColor="#9CA3AF"
-            android:textSize="13sp"
-            android:paddingBottom="8dp"/>
-
-        <Button
-            android:id="@+id/localPresenterBtn"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="🧑‍💼 مقدم محلي متحرك — بدون Backend"
-            android:textAllCaps="false"
-            android:textColor="#061314"
-            android:backgroundTint="#5EEAD4"/>
-
-        <Button
-            android:id="@+id/realPresenterBtn"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="👤 مقدم واقعي AI بصوت رجل — يحتاج Backend"
-            android:textAllCaps="false"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#4F46E5"
-            android:layout_marginTop="6dp"/>
-
         <Button
             android:id="@+id/renderBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="🎬 فيديو مشاهد فقط"
+            android:text="🎬 إنشاء فيديو من المشاهد البصرية"
             android:textAllCaps="false"
             android:textColor="#FFFFFF"
-            android:backgroundTint="#374151"
-            android:layout_marginTop="6dp"/>
+            android:backgroundTint="#374151"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="4. المعاينة والتصدير"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:paddingTop="18dp"
+            android:paddingBottom="8dp"/>
 
         <Button
             android:id="@+id/previewBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="▶ معاينة الفيديو"
+            android:text="▶ معاينة الفيديو النهائي"
             android:textAllCaps="false"
             android:textColor="#FFFFFF"
-            android:backgroundTint="#374151"
-            android:layout_marginTop="6dp"/>
+            android:backgroundTint="#374151"/>
 
         <Button
             android:id="@+id/shareBtn"
@@ -232,11 +257,11 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="4. TikTok"
+            android:text="5. TikTok"
             android:textColor="#FFFFFF"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:paddingTop="14dp"
+            android:paddingTop="18dp"
             android:paddingBottom="8dp"/>
 
         <Button
@@ -282,7 +307,7 @@
             android:id="@+id/settingsBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="⚙ الإعدادات"
+            android:text="⚙ الإعدادات والصوت"
             android:textAllCaps="false"
             android:textColor="#D1D5DB"
             android:backgroundTint="#1F2937"
