@@ -208,16 +208,28 @@ class EasyMainActivity : AppCompatActivity() {
         allowDuet:Boolean,
         allowStitch:Boolean
     ) {
-        status.text="جاري رفع الفيديو إلى TikTok…"
+        status.text="جاري التحقق من الفيديو ورفعه إلى TikTok…"
         thread {
             try {
+                val mmr=MediaMetadataRetriever()
+                mmr.setDataSource(file.absolutePath)
+                val durationMs=mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+                mmr.release()
+                val durationSec=((durationMs+999L)/1000L).toInt()
+                if(info.maxDurationSec>0 && durationSec>info.maxDurationSec) {
+                    runOnUiThread {
+                        status.text="مدة الفيديو "+durationSec+" ثانية وتتجاوز حد TikTok للحساب ("+info.maxDurationSec+" ثانية)"
+                    }
+                    return@thread
+                }
                 val publishId=BackendApiV16.publishFile(
                     backendUrl(),session,file,caption,privacy,
                     allowComment=allowComment && !info.commentDisabled,
                     allowDuet=allowDuet && !info.duetDisabled,
                     allowStitch=allowStitch && !info.stitchDisabled,
                     isAigc=true,
-                    coverMs=1000L
+                    coverMs=1000L,
+                    durationSec=durationSec
                 )
                 pollTikTokStatus(session,publishId)
             } catch(ex:Exception) {
