@@ -84,6 +84,32 @@ class EasyMainActivity : AppCompatActivity() {
         }
     }
 
+    private fun displayContent(c:BackendApiV16.GeneratedContent):String = buildString {
+        if(c.title.isNotBlank()) append("العنوان: ").append(c.title).append("\n\n")
+        if(c.hook.isNotBlank()) append("الافتتاحية: ").append(c.hook).append("\n\n")
+        if(c.scenes.isNotEmpty()) {
+            append("المشاهد:\n")
+            c.scenes.forEachIndexed { i,s -> append(i+1).append(". ").append(s).append("\n") }
+            append("\n")
+        }
+        if(c.description.isNotBlank()) append("الوصف: ").append(c.description).append("\n\n")
+        if(c.hashtags.isNotEmpty()) append(c.hashtags.joinToString(" "))
+    }
+
+    private fun offlineDemoContent(idea:String)=BackendApiV16.GeneratedContent(
+        title=idea,
+        hook="تخيل أن هذا حدث فجأة… ماذا ستكون أول ردة فعل لك؟",
+        description="فيديو تجريبي تم إنشاؤه محليًا لاختبار الصوت والمشاهد قبل اتصال خادم الذكاء الاصطناعي.",
+        hashtags=listOf("#ذكاء_اصطناعي","#معلومات","#TikTok"),
+        scenes=listOf(
+            "نبدأ بالسؤال: $idea",
+            "في اللحظات الأولى سيحاول الجميع فهم ما الذي يحدث.",
+            "بعدها تبدأ التأثيرات بالظهور في حياتنا اليومية بشكل واضح.",
+            "بعض النتائج ستكون متوقعة، لكن نتائج أخرى قد تفاجئنا.",
+            "والآن دورك: ماذا تتوقع أن يحدث؟"
+        )
+    )
+
     private fun generate() {
         val idea=topic.text.toString().trim()
         if(idea.isEmpty()) {
@@ -98,25 +124,18 @@ class EasyMainActivity : AppCompatActivity() {
             try {
                 val c=BackendApiV16.generateContent(backend,idea)
                 lastContent=c
-                val text=buildString {
-                    if(c.title.isNotBlank()) append("العنوان: ").append(c.title).append("\n\n")
-                    if(c.hook.isNotBlank()) append("الافتتاحية: ").append(c.hook).append("\n\n")
-                    if(c.scenes.isNotEmpty()) {
-                        append("المشاهد:\n")
-                        c.scenes.forEachIndexed { i,s -> append(i+1).append(". ").append(s).append("\n") }
-                        append("\n")
-                    }
-                    if(c.description.isNotBlank()) append("الوصف: ").append(c.description).append("\n\n")
-                    if(c.hashtags.isNotEmpty()) append(c.hashtags.joinToString(" "))
-                }
+                val text=displayContent(c)
                 runOnUiThread {
                     result.text=if(text.isBlank()) "وصل رد من الخادم لكنه لا يحتوي محتوى صالحًا." else text
                     status.text="تم إنشاء المحتوى ✓"
                 }
             } catch(ex:Exception) {
+                val c=offlineDemoContent(idea)
+                lastContent=c
+                val text=displayContent(c)
                 runOnUiThread {
-                    status.text="تعذر الاتصال بخادم الذكاء الاصطناعي. راجع Backend URL من الإعدادات."
-                    result.text=ex.message ?: "خطأ غير معروف"
+                    result.text=text
+                    status.text="وضع الاختبار المحلي ✓ — الخادم غير متصل"
                 }
             }
         }
