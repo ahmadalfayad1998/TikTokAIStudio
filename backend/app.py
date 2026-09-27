@@ -6,6 +6,8 @@ from fastapi import Header, UploadFile, File, Form
 from tiktok_service import creator_info, post_status, exchange_code, refresh_token, init_direct_post, upload_file, chunk_plan
 import session_store
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
+from urllib.parse import urlencode, quote
 from pydantic import BaseModel, Field
 
 app=FastAPI(title="TikTokAIStudio Backend",version="1.0.0")
@@ -155,3 +157,35 @@ async def tiktok_publish_status(req:PublishStatusRequest, session: str = Header(
         return await post_status(row[0],req.publish_id)
     except Exception as e:
         raise HTTPException(status_code=502,detail=f"TikTok status failed: {type(e).__name__}")
+
+
+@app.get("/oauth/tiktok/start")
+async def tiktok_oauth_start():
+    client_key=os.getenv("TIKTOK_CLIENT_KEY")
+    redirect_uri=os.getenv("TIKTOK_REDIRECT_URI")
+    if not client_key or not redirect_uri:
+        raise HTTPException(status_code=503,detail="TikTok Developer settings are not configured")
+    state=session_store.create_oauth_state()
+    params={
+        "client_key":client_key,
+        "scope":"user.info.basic,video.publish",
+        "response_type":"code",
+        "redirect_uri":redirect_uri,
+        "state":state,
+    }
+    return RedirectResponse("https://www.tiktok.com/v2/auth/authorize/?"+urlencode(params))
+
+@app.get("/oauth/tiktok/callback")
+async def tiktok_oauth_callback(code:str="",state:str="",error:str=""):
+    app_return=os.getenv("TIKTOK_APP_RETURN_URI","tiktokai://oauth")
+    if error:
+        return RedirectResponse(app_return+"?error="+quote(error))
+    if not code or not state or not session_store.consume_oauth_state(state):
+        return RedirectResponse(app_return+"?error=invalid_oauth_state")
+    redirect_uri=os.getenv("TIKTOK_REDIRECT_URI")
+    try:
+        bundle=await exchange_code(code,redirect_uri,None)
+        sid=session_store.save(bundle["access_token"],bundle["refresh_token"],int(bundle.get("expires_in",0)))
+        return RedirectResponse(app_return+"?session_id="+quote(sid))
+    except Exception as e:
+        return RedirectResponse(app_return+"?error="+quote(type(e).__name__))
