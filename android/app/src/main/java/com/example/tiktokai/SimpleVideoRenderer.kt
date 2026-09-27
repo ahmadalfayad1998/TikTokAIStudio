@@ -6,8 +6,8 @@ import android.view.Surface
 import java.io.File
 
 object SimpleVideoRenderer {
- private const val W=720; private const val H=1280; private const val FPS=30; private const val SEC=8
- fun render(context:Context,text:String):File {
+ private const val W=720; private const val H=1280; private const val FPS=30
+ fun render(context:Context,text:String,durationMs:Long=8000L):File {
   val out=File(context.getExternalFilesDir(null),"tiktok_ai_latest.mp4"); if(out.exists()) out.delete()
   val fmt=MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC,W,H).apply {
    setInteger(MediaFormat.KEY_COLOR_FORMAT,MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
@@ -19,7 +19,8 @@ object SimpleVideoRenderer {
   var track=-1; var started=false
   try {
    val lines=wrap(text.replace("\n"," "),32).take(12)
-   for(frame in 0 until FPS*SEC) { draw(surface,lines,frame); while(true) {
+   val seconds=(durationMs.coerceIn(3000L,180000L)+999L)/1000L
+   for(frame in 0 until (FPS*seconds).toInt()) { draw(surface,lines,frame); while(true) {
     val i=codec.dequeueOutputBuffer(info,0)
     if(i==MediaCodec.INFO_TRY_AGAIN_LATER) break
     if(i==MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) { track=mux.addTrack(codec.outputFormat); mux.start(); started=true }
