@@ -55,8 +55,11 @@ object AppDiagnostics {
     }
 
     fun hasAvcEncoder():Boolean = runCatching {
-        val format=MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC,720,1280)
-        MediaCodecList(MediaCodecList.REGULAR_CODECS).findEncoderForFormat(format)!=null
+        MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos.any { info ->
+            info.isEncoder && info.supportedTypes.any {
+                it.equals(MediaFormat.MIMETYPE_VIDEO_AVC,ignoreCase=true)
+            }
+        }
     }.getOrDefault(false)
 
     fun report(context:Context):String {
@@ -88,12 +91,10 @@ object AppDiagnostics {
         return runCatching {
             when(uri.scheme) {
                 "file" -> uri.path?.let { File(it).exists() && File(it).canRead() } == true
-                "content" -> {
-                    context.contentResolver.openInputStream(uri)?.use { input ->
-                        input.read()
-                    }
+                "content" -> context.contentResolver.openInputStream(uri)?.use { input ->
+                    input.read()
                     true
-                }
+                } ?: false
                 else -> false
             }
         }.getOrDefault(false)
