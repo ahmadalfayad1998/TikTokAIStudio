@@ -14,7 +14,7 @@ object LocalVisualGenerator {
     private const val W=720
     private const val H=1280
 
-    private enum class Theme { TECH, FINANCE, SPACE, STORY, KNOWLEDGE, TRAVEL, GENERAL }
+    private enum class Theme { TECH, ENERGY, FINANCE, SPACE, STORY, KNOWLEDGE, TRAVEL, GENERAL }
 
     fun generate(context:Context,prompts:List<String>):List<Uri> {
         val dir=File(context.getExternalFilesDir("visuals"),"local_pro").apply { mkdirs() }
@@ -54,6 +54,7 @@ object LocalVisualGenerator {
 
         when(theme) {
             Theme.TECH -> drawTech(canvas,rnd,palette,index)
+            Theme.ENERGY -> drawEnergy(canvas,rnd,palette,index)
             Theme.FINANCE -> drawFinance(canvas,rnd,palette)
             Theme.SPACE -> drawSpace(canvas,rnd,palette)
             Theme.STORY -> drawStory(canvas,rnd,palette)
@@ -86,6 +87,7 @@ object LocalVisualGenerator {
         val p=prompt.lowercase()
         return when {
             listOf("internet","network","technology","phone","mobile","ai","إنترنت","تقنية","هاتف","ذكاء").any { p.contains(it) } -> Theme.TECH
+            listOf("electricity","power grid","energy","blackout","كهرباء","طاقة","انقطاع الكهرباء").any { p.contains(it) } -> Theme.ENERGY
             listOf("money","finance","bank","economy","business","مال","اقتصاد","بنك","عمل").any { p.contains(it) } -> Theme.FINANCE
             listOf("space","planet","moon","mars","فضاء","كوكب","قمر","مريخ").any { p.contains(it) } -> Theme.SPACE
             listOf("story","mystery","history","قصة","غموض","تاريخ").any { p.contains(it) } -> Theme.STORY
@@ -100,6 +102,10 @@ object LocalVisualGenerator {
             Theme.TECH -> arrayOf(
                 intArrayOf(Color.rgb(5,12,28),Color.rgb(7,43,62),Color.rgb(7,13,29),Color.rgb(45,212,191),Color.rgb(59,130,246)),
                 intArrayOf(Color.rgb(10,12,32),Color.rgb(28,32,88),Color.rgb(8,12,27),Color.rgb(96,165,250),Color.rgb(168,85,247))
+            )
+            Theme.ENERGY -> arrayOf(
+                intArrayOf(Color.rgb(8,15,28),Color.rgb(49,39,16),Color.rgb(7,10,18),Color.rgb(250,204,21),Color.rgb(56,189,248)),
+                intArrayOf(Color.rgb(12,17,25),Color.rgb(58,32,13),Color.rgb(8,10,16),Color.rgb(251,146,60),Color.rgb(245,158,11))
             )
             Theme.FINANCE -> arrayOf(
                 intArrayOf(Color.rgb(12,18,16),Color.rgb(21,75,49),Color.rgb(7,15,13),Color.rgb(52,211,153),Color.rgb(250,204,21)),
@@ -374,6 +380,112 @@ object LocalVisualGenerator {
                 }
                 c.drawLine(360f,775f,360f,865f,line)
                 c.drawLine(300f,865f,420f,865f,line)
+            }
+        }
+    }
+
+    private fun drawEnergy(c:Canvas,rnd:Random,palette:IntArray,index:Int) {
+        val accent=palette[3]
+        val accent2=palette[4]
+        val line=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color=Color.argb(135,Color.red(accent),Color.green(accent),Color.blue(accent))
+            style=Paint.Style.STROKE
+            strokeWidth=6f
+            strokeCap=Paint.Cap.ROUND
+        }
+        when(index % 6) {
+            0 -> {
+                // Power button / instant outage.
+                c.drawCircle(360f,430f,150f,Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color=Color.argb(26,255,255,255)
+                })
+                c.drawArc(RectF(235f,305f,485f,555f),-52f,284f,false,line)
+                c.drawLine(360f,265f,360f,420f,line)
+                drawGlow(c,360f,430f,210f,accent,70)
+            }
+            1 -> {
+                // City skyline with windows switching off.
+                val fill=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=Color.argb(62,255,255,255) }
+                val buildings=arrayOf(
+                    RectF(70f,430f,180f,760f),RectF(190f,350f,320f,760f),
+                    RectF(335f,470f,445f,760f),RectF(460f,300f,650f,760f)
+                )
+                buildings.forEachIndexed { bi,b ->
+                    c.drawRect(b,fill)
+                    val cols=if(b.width()>150) 3 else 2
+                    for(row in 0..4) for(col in 0 until cols) {
+                        val on=(bi+row+col)%3==0
+                        val wp=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                            color=if(on) Color.argb(180,Color.red(accent),Color.green(accent),Color.blue(accent))
+                            else Color.argb(24,255,255,255)
+                        }
+                        val x=b.left+22f+col*42f
+                        val y=b.top+35f+row*58f
+                        c.drawRoundRect(RectF(x,y,x+22f,y+26f),4f,4f,wp)
+                    }
+                }
+                c.drawRect(55f,760f,665f,770f,Paint().apply { color=Color.argb(65,255,255,255) })
+            }
+            2 -> {
+                // Transmission grid / infrastructure.
+                for(offset in listOf(150f,360f,570f)) {
+                    val tower=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color=Color.argb(145,255,255,255)
+                        style=Paint.Style.STROKE
+                        strokeWidth=4f
+                    }
+                    c.drawLine(offset,280f,offset-65f,720f,tower)
+                    c.drawLine(offset,280f,offset+65f,720f,tower)
+                    c.drawLine(offset-45f,430f,offset+45f,430f,tower)
+                    c.drawLine(offset-55f,560f,offset+55f,560f,tower)
+                }
+                c.drawLine(150f,380f,360f,380f,line)
+                c.drawLine(360f,380f,570f,380f,line)
+                c.drawLine(150f,505f,360f,505f,line)
+                c.drawLine(360f,505f,570f,505f,line)
+                val breakPaint=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=Color.rgb(251,113,133);strokeWidth=9f }
+                c.drawLine(345f,362f,375f,397f,breakPaint)
+                c.drawLine(375f,362f,345f,397f,breakPaint)
+            }
+            3 -> {
+                // Backup generator / battery.
+                val battery=RectF(170f,330f,550f,650f)
+                c.drawRoundRect(battery,40f,40f,Paint(Paint.ANTI_ALIAS_FLAG).apply { color=Color.argb(35,255,255,255) })
+                c.drawRoundRect(battery,40f,40f,Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color=Color.argb(100,255,255,255);style=Paint.Style.STROKE;strokeWidth=4f
+                })
+                c.drawRoundRect(RectF(550f,425f,585f,555f),10f,10f,Paint().apply { color=Color.argb(110,255,255,255) })
+                val level=RectF(210f,385f,505f,595f)
+                c.drawRoundRect(level,22f,22f,Paint().apply { color=Color.argb(20,255,255,255) })
+                c.drawRoundRect(RectF(225f,400f,435f,580f),16f,16f,Paint().apply {
+                    shader=LinearGradient(225f,0f,435f,0f,intArrayOf(accent,accent2),null,Shader.TileMode.CLAMP)
+                })
+            }
+            4 -> {
+                // Critical services / hospital pulse.
+                val pulse=Path()
+                pulse.moveTo(70f,520f)
+                pulse.lineTo(205f,520f)
+                pulse.lineTo(260f,430f)
+                pulse.lineTo(320f,635f)
+                pulse.lineTo(390f,350f)
+                pulse.lineTo(455f,520f)
+                pulse.lineTo(650f,520f)
+                c.drawPath(pulse,line)
+                c.drawCircle(360f,520f,220f,Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color=Color.argb(30,255,255,255);style=Paint.Style.STROKE;strokeWidth=3f
+                })
+            }
+            else -> {
+                // Recovery / grid coming back online.
+                val pts=arrayOf(PointF(115f,620f),PointF(245f,520f),PointF(365f,430f),PointF(500f,345f),PointF(610f,270f))
+                for(i in 0 until pts.lastIndex) c.drawLine(pts[i].x,pts[i].y,pts[i+1].x,pts[i+1].y,line)
+                pts.forEachIndexed { i,p ->
+                    c.drawCircle(p.x,p.y,10f+i*2f,Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color=if(i==pts.lastIndex) Color.WHITE else accent
+                    })
+                    drawGlow(c,p.x,p.y,42f,accent,40)
+                }
             }
         }
     }
