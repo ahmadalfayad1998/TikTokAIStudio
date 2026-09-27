@@ -245,6 +245,7 @@ class EasyMainActivity : AppCompatActivity() {
                 )
                 pollTikTokStatus(session,publishId)
             } catch(ex:Exception) {
+                AppDiagnostics.logError(this,"tiktok-publish",ex)
                 runOnUiThread { status.text="فشل إرسال الفيديو إلى TikTok: "+(ex.message ?: "خطأ") }
             }
         }
@@ -370,6 +371,7 @@ class EasyMainActivity : AppCompatActivity() {
                     saveProject()
                 }
             } catch(ex:Exception) {
+                AppDiagnostics.logError(this,"local-scenes",ex)
                 runOnUiThread {
                     status.text="تعذر إنشاء المشاهد المحلية: "+(ex.message ?: "خطأ")
                 }
@@ -419,6 +421,7 @@ class EasyMainActivity : AppCompatActivity() {
                     saveProject()
                 }
             } catch(ex:Exception) {
+                AppDiagnostics.logError(this,"ai-visuals",ex)
                 runOnUiThread {
                     autoImagesButton.isEnabled=true
                     status.text="تعذر توليد صور AI: "+(ex.message ?: "تحقق من مزود الصور في Backend")
@@ -599,6 +602,21 @@ class EasyMainActivity : AppCompatActivity() {
             return
         }
 
+        val preflight=AppDiagnostics.renderPreflight(this,selectedImages)
+        if(!preflight.ok) {
+            status.text="تعذر بدء الفيديو: "+preflight.message
+            return
+        }
+        if(selectedImages.isNotEmpty() && preflight.readableImages.size!=selectedImages.size) {
+            selectedImages.clear()
+            selectedImages.addAll(preflight.readableImages)
+            imagesStatus.text=if(selectedImages.isEmpty())
+                "الصور السابقة غير متاحة — سيتم إنشاء مشاهد محلية"
+            else
+                "تم تجاهل الصور غير المتاحة؛ المتبقي "+selectedImages.size
+            updateScenePreview()
+        }
+
         renderButton.isEnabled=false
         thread {
             try {
@@ -652,6 +670,7 @@ class EasyMainActivity : AppCompatActivity() {
                     saveProject()
                 }
             } catch(ex:Exception) {
+                AppDiagnostics.logError(this,"render",ex)
                 runOnUiThread {
                     status.text="فشل إنشاء الفيديو: "+(ex.message ?: "خطأ غير معروف")
                     renderButton.isEnabled=true
