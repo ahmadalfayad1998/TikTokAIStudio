@@ -2,6 +2,9 @@ package com.example.tiktokai
 
 import android.content.Intent
 import android.os.Bundle
+import android.net.Uri
+import androidx.core.content.FileProvider
+import java.io.File
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import kotlin.concurrent.thread
@@ -10,6 +13,7 @@ class EasyMainActivity : AppCompatActivity() {
     private lateinit var status: TextView
     private lateinit var topic: EditText
     private lateinit var result: TextView
+    private var lastVideo: File? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -19,12 +23,8 @@ class EasyMainActivity : AppCompatActivity() {
         result=findViewById(R.id.result)
 
         findViewById<Button>(R.id.generateBtn).setOnClickListener { generate() }
-        findViewById<Button>(R.id.renderBtn).setOnClickListener {
-            status.text="محرك إنشاء الفيديو هو المرحلة التالية"
-        }
-        findViewById<Button>(R.id.previewBtn).setOnClickListener {
-            status.text="لا يوجد فيديو بعد — أنشئ الفيديو أولاً"
-        }
+        findViewById<Button>(R.id.renderBtn).setOnClickListener { renderVideo() }
+        findViewById<Button>(R.id.previewBtn).setOnClickListener { previewVideo() }
         findViewById<Button>(R.id.connectBtn).setOnClickListener {
             status.text="ربط TikTok يحتاج Client Key معتمد من TikTok Developer"
         }
@@ -33,6 +33,40 @@ class EasyMainActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.settingsBtn).setOnClickListener {
             startActivity(Intent(this, SettingsActivityV19::class.java))
+        }
+    }
+
+    private fun renderVideo() {
+        val script=result.text.toString().trim()
+        if(script.isEmpty()) {
+            status.text="أنشئ المحتوى أولاً"
+            return
+        }
+        status.text="جاري إنشاء فيديو عمودي 720×1280…"
+        thread {
+            try {
+                val file=SimpleVideoRenderer.render(this, script)
+                lastVideo=file
+                runOnUiThread { status.text="تم إنشاء الفيديو ✓ — اضغط معاينة" }
+            } catch(ex:Exception) {
+                runOnUiThread { status.text="فشل إنشاء الفيديو: "+(ex.message ?: "خطأ غير معروف") }
+            }
+        }
+    }
+
+    private fun previewVideo() {
+        val file=lastVideo ?: File(getExternalFilesDir(null),"tiktok_ai_latest.mp4")
+        if(!file.exists()) {
+            status.text="لا يوجد فيديو بعد — أنشئ الفيديو أولاً"
+            return
+        }
+        val uri: Uri=FileProvider.getUriForFile(this, packageName+".provider", file)
+        val intent=Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri,"video/mp4")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        try { startActivity(intent) } catch(ex:Exception) {
+            status.text="لا يوجد مشغل فيديو متاح على الجهاز"
         }
     }
 
