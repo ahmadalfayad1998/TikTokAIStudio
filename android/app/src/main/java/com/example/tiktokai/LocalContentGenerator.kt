@@ -1,13 +1,14 @@
 package com.example.tiktokai
 
 object LocalContentGenerator {
-    private enum class Kind { TECH, FINANCE, SPACE, HISTORY, MOTIVATION, GENERAL }
+    private enum class Kind { TECH, ENERGY, FINANCE, SPACE, HISTORY, MOTIVATION, GENERAL }
 
     fun generate(topic:String):BackendApiV16.GeneratedContent {
         val clean=topic.trim().replace(Regex("\\s+")," ")
         val kind=classify(clean)
         val packageData=when(kind) {
             Kind.TECH -> tech(clean)
+            Kind.ENERGY -> energy(clean)
             Kind.FINANCE -> finance(clean)
             Kind.SPACE -> space(clean)
             Kind.HISTORY -> history(clean)
@@ -23,6 +24,7 @@ object LocalContentGenerator {
             add("#معلومات")
             when(kind) {
                 Kind.TECH -> add("#تقنية")
+                Kind.ENERGY -> add("#طاقة")
                 Kind.FINANCE -> add("#اقتصاد")
                 Kind.SPACE -> add("#فضاء")
                 Kind.HISTORY -> add("#تاريخ")
@@ -58,6 +60,7 @@ object LocalContentGenerator {
         val p=topic.lowercase()
         return when {
             listOf("انترنت","إنترنت","شبكة","هاتف","ذكاء","تقنية","تكنولوجيا","internet","network","phone","ai","technology").any { p.contains(it) } -> Kind.TECH
+            listOf("كهرباء","الطاقة","طاقة","انقطاع","electricity","power","energy","blackout").any { p.contains(it) } -> Kind.ENERGY
             listOf("مال","اقتصاد","بنك","راتب","سوق","عملات","money","economy","bank","market","business").any { p.contains(it) } -> Kind.FINANCE
             listOf("فضاء","قمر","مريخ","كوكب","شمس","space","moon","mars","planet").any { p.contains(it) } -> Kind.SPACE
             listOf("تاريخ","قديم","حضارة","امبراطورية","إمبراطورية","history","ancient","empire").any { p.contains(it) } -> Kind.HISTORY
@@ -76,6 +79,19 @@ object LocalContentGenerator {
             "بعدها يظهر الأثر على العمل والدفع والخدمات التي تعتمد على الاتصال المستمر.",
             "الناس والمؤسسات سيبحثون سريعًا عن بدائل محلية وطرق تواصل أبسط.",
             "المفاجأة ليست في الانقطاع نفسه، بل في الأشياء التي اكتشفنا أننا نعتمد عليها يوميًا."
+        )
+    )
+
+    private fun energy(t:String)=Package(
+        title=t,
+        hook="لو انطفأت الكهرباء فجأة، أول دقائق ستكشف كم شيء في حياتنا يعتمد عليها.",
+        description="سيناريو قصير يشرح كيف ينتقل أثر انقطاع الطاقة من المنزل إلى الخدمات والمدينة.",
+        scenes=listOf(
+            "تبدأ اللحظة الأولى مع السيناريو: $t",
+            "الإضاءة والاتصالات والأجهزة المنزلية تتوقف فورًا ويبدأ الناس بالبحث عن مصدر بديل.",
+            "بعد ساعات يظهر الضغط على المستشفيات والمياه والنقل وشبكات الاتصالات الاحتياطية.",
+            "المتاجر والدفع الإلكتروني والتبريد تصبح تحديات عملية إذا استمر الانقطاع.",
+            "ومع عودة الطاقة تدريجيًا تظهر أهمية البطاريات والمولدات وخطط الطوارئ."
         )
     )
 
@@ -176,6 +192,7 @@ object LocalContentGenerator {
     private fun visualPrompt(kind:Kind,topic:String,text:String,index:Int):String {
         val style=when(kind) {
             Kind.TECH -> "futuristic technology, elegant network light, premium dark blue and teal"
+            Kind.ENERGY -> "cinematic power grid and city energy infrastructure, deep navy, amber electric light"
             Kind.FINANCE -> "premium finance editorial, elegant charts and city lights, deep green and gold"
             Kind.SPACE -> "cinematic deep space, planet light, violet and blue"
             Kind.HISTORY -> "cinematic historical editorial, warm dramatic light, rich amber and burgundy"
