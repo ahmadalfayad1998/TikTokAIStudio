@@ -6,10 +6,16 @@
         android:label="TikTok AI Studio"
         android:usesCleartextTraffic="true">
         <activity android:name=".SettingsActivityV19" android:exported="false"/>
-<activity android:name=".EasyMainActivity" android:screenOrientation="portrait" android:exported="true">
+<activity android:name=".EasyMainActivity" android:screenOrientation="portrait" android:launchMode="singleTop" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="tiktokai" android:host="oauth"/>
             </intent-filter>
         </activity>
         <provider
