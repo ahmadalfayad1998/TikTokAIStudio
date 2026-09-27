@@ -53,7 +53,7 @@ object LocalVisualGenerator {
         drawFineGrain(canvas,rnd)
 
         when(theme) {
-            Theme.TECH -> drawTech(canvas,rnd,palette)
+            Theme.TECH -> drawTech(canvas,rnd,palette,index)
             Theme.FINANCE -> drawFinance(canvas,rnd,palette)
             Theme.SPACE -> drawSpace(canvas,rnd,palette)
             Theme.STORY -> drawStory(canvas,rnd,palette)
@@ -164,65 +164,217 @@ object LocalVisualGenerator {
         }
     }
 
-    private fun drawTech(c:Canvas,rnd:Random,palette:IntArray) {
-        val grid=Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color=Color.argb(38,190,245,255)
+    private fun drawTech(c:Canvas,rnd:Random,palette:IntArray,index:Int) {
+        val accent=palette[3]
+        val accent2=palette[4]
+        val white=Color.argb(220,245,250,255)
+        val thin=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color=Color.argb(72,220,245,255)
             style=Paint.Style.STROKE
-            strokeWidth=1.5f
+            strokeWidth=3f
         }
-        val horizon=H*0.64f
-        for(i in -5..5) {
-            val x=W/2f+i*66f
-            c.drawLine(W/2f,horizon,x,H*0.96f,grid)
-        }
-        for(i in 0..6) {
-            val y=horizon+i*i*10f
-            c.drawLine(56f,y,W-56f,y,grid)
-        }
-
-        val route=Path()
-        route.moveTo(86f,570f)
-        route.cubicTo(210f,430f,330f,520f,420f,390f)
-        route.cubicTo(500f,285f,575f,340f,642f,250f)
-        val routePaint=Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color=Color.argb(145,94,234,212)
+        val strong=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color=accent
             style=Paint.Style.STROKE
-            strokeWidth=5f
+            strokeWidth=7f
             strokeCap=Paint.Cap.ROUND
         }
-        c.drawPath(route,routePaint)
 
-        val nodes=arrayOf(
-            PointF(86f,570f),
-            PointF(230f,465f),
-            PointF(420f,390f),
-            PointF(535f,320f),
-            PointF(642f,250f)
-        )
-        val halo=Paint(Paint.ANTI_ALIAS_FLAG)
-        nodes.forEachIndexed { i,p ->
-            val radius=if(i==nodes.lastIndex) 18f else 12f
-            halo.color=Color.argb(30,94,234,212)
-            c.drawCircle(p.x,p.y,radius*2.8f,halo)
-            halo.color=if(i==nodes.lastIndex) Color.WHITE else palette[3]
-            c.drawCircle(p.x,p.y,radius,halo)
+        when(index % 6) {
+            0 -> {
+                // Phone + lost signal: opening scene.
+                val body=RectF(205f,210f,515f,800f)
+                val glass=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=Color.argb(32,255,255,255) }
+                val border=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color=Color.argb(145,255,255,255)
+                    style=Paint.Style.STROKE
+                    strokeWidth=5f
+                }
+                c.drawRoundRect(body,46f,46f,glass)
+                c.drawRoundRect(body,46f,46f,border)
+                c.drawRoundRect(RectF(230f,280f,490f,720f),28f,28f,Paint().apply {
+                    shader=LinearGradient(230f,280f,490f,720f,
+                        intArrayOf(Color.argb(80,accent),Color.argb(18,accent2)),
+                        null,Shader.TileMode.CLAMP)
+                })
+                c.drawRoundRect(RectF(306f,235f,414f,246f),6f,6f,Paint().apply { color=white })
+
+                // Wi-Fi arcs.
+                val wifi=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color=Color.argb(220,255,255,255)
+                    style=Paint.Style.STROKE
+                    strokeWidth=8f
+                    strokeCap=Paint.Cap.ROUND
+                }
+                val cx=360f; val cy=485f
+                c.drawArc(RectF(cx-115f,cy-80f,cx+115f,cy+150f),215f,110f,false,wifi)
+                c.drawArc(RectF(cx-75f,cy-40f,cx+75f,cy+110f),215f,110f,false,wifi)
+                c.drawCircle(cx,cy+88f,9f,Paint(Paint.ANTI_ALIAS_FLAG).apply { color=Color.WHITE })
+
+                // Red/rose disconnect slash.
+                val slash=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color=Color.rgb(251,113,133)
+                    strokeWidth=14f
+                    strokeCap=Paint.Cap.ROUND
+                }
+                c.drawLine(270f,375f,455f,590f,slash)
+                drawGlassOrb(c,535f,205f,62f,accent2)
+            }
+
+            1 -> {
+                // Global network outage.
+                val cx=360f; val cy=470f; val r=205f
+                val globe=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color=Color.argb(165,225,248,255)
+                    style=Paint.Style.STROKE
+                    strokeWidth=3f
+                }
+                c.drawCircle(cx,cy,r,globe)
+                for(offset in listOf(-90f,0f,90f)) {
+                    c.drawOval(RectF(cx-r,cy-55f+offset/4,cx+r,cy+55f+offset/4),globe)
+                }
+                c.drawOval(RectF(cx-80f,cy-r,cx+80f,cy+r),globe)
+                c.drawOval(RectF(cx-145f,cy-r,cx+145f,cy+r),globe)
+
+                val nodes=arrayOf(
+                    PointF(220f,390f),PointF(312f,325f),PointF(470f,365f),
+                    PointF(515f,500f),PointF(385f,585f),PointF(240f,555f)
+                )
+                val connection=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color=Color.argb(115,94,234,212)
+                    strokeWidth=4f
+                }
+                for(i in 0 until nodes.size-1) {
+                    if(i==2) continue // deliberate broken link.
+                    c.drawLine(nodes[i].x,nodes[i].y,nodes[i+1].x,nodes[i+1].y,connection)
+                }
+                nodes.forEachIndexed { i,p ->
+                    val pnt=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color=if(i==2||i==3) Color.rgb(251,113,133) else Color.WHITE
+                    }
+                    c.drawCircle(p.x,p.y,9f,pnt)
+                }
+                val breakPaint=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color=Color.rgb(251,113,133)
+                    strokeWidth=7f
+                    strokeCap=Paint.Cap.ROUND
+                }
+                c.drawLine(456f,420f,490f,455f,breakPaint)
+                c.drawLine(490f,420f,456f,455f,breakPaint)
+                drawGlassOrb(c,585f,220f,55f,accent)
+            }
+
+            2 -> {
+                // Offline workstations.
+                val desk=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=Color.argb(55,255,255,255) }
+                c.drawRoundRect(RectF(92f,705f,628f,735f),14f,14f,desk)
+                for(i in 0..1) {
+                    val left=105f+i*280f
+                    val monitor=RectF(left,285f,left+230f,610f)
+                    c.drawRoundRect(monitor,28f,28f,Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color=Color.argb(34,255,255,255)
+                    })
+                    c.drawRoundRect(monitor,28f,28f,Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color=Color.argb(100,255,255,255)
+                        style=Paint.Style.STROKE
+                        strokeWidth=3f
+                    })
+                    c.drawLine(left+115f,610f,left+115f,690f,thin)
+                    c.drawRoundRect(RectF(left+60f,685f,left+170f,700f),7f,7f,Paint().apply { color=Color.argb(90,255,255,255) })
+
+                    val centerX=left+115f
+                    c.drawCircle(centerX,445f,45f,Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color=Color.argb(28,251,113,133)
+                    })
+                    val xpaint=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color=Color.rgb(251,113,133);strokeWidth=10f;strokeCap=Paint.Cap.ROUND
+                    }
+                    c.drawLine(centerX-24f,421f,centerX+24f,469f,xpaint)
+                    c.drawLine(centerX+24f,421f,centerX-24f,469f,xpaint)
+                }
+                drawGlassOrb(c,570f,190f,58f,accent2)
+            }
+
+            3 -> {
+                // Alternative communication / local mesh.
+                val points=arrayOf(
+                    PointF(140f,520f),PointF(270f,365f),PointF(445f,380f),
+                    PointF(575f,535f),PointF(360f,665f)
+                )
+                val mesh=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color=Color.argb(95,94,234,212)
+                    strokeWidth=5f
+                }
+                val links=arrayOf(0 to 1,1 to 2,2 to 3,3 to 4,4 to 0,1 to 4,2 to 4)
+                links.forEach { (a,b) -> c.drawLine(points[a].x,points[a].y,points[b].x,points[b].y,mesh) }
+                points.forEachIndexed { i,p ->
+                    drawGlassOrb(c,p.x,p.y,if(i==4)45f else 32f,if(i%2==0) accent else accent2)
+                }
+
+                // Radio waves on both sides.
+                val wave=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color=Color.argb(140,255,255,255)
+                    style=Paint.Style.STROKE
+                    strokeWidth=4f
+                }
+                c.drawArc(RectF(50f,315f,250f,625f),280f,120f,false,wave)
+                c.drawArc(RectF(470f,315f,670f,625f),140f,120f,false,wave)
+            }
+
+            4 -> {
+                // Digital payment / service interruption.
+                val terminal=RectF(190f,250f,530f,735f)
+                c.drawRoundRect(terminal,48f,48f,Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color=Color.argb(35,255,255,255)
+                })
+                c.drawRoundRect(terminal,48f,48f,Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color=Color.argb(105,255,255,255)
+                    style=Paint.Style.STROKE
+                    strokeWidth=4f
+                })
+                c.drawRoundRect(RectF(235f,315f,485f,475f),24f,24f,Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color=Color.argb(40,accent)
+                })
+                val card=RectF(120f,520f,405f,700f)
+                c.save(); c.rotate(-12f,card.centerX(),card.centerY())
+                c.drawRoundRect(card,28f,28f,Paint(Paint.ANTI_ALIAS_FLAG).apply { color=Color.argb(175,15,23,42) })
+                c.drawRoundRect(card,28f,28f,Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color=Color.argb(120,255,255,255);style=Paint.Style.STROKE;strokeWidth=3f
+                })
+                c.drawRoundRect(RectF(150f,560f,230f,600f),9f,9f,Paint().apply { color=Color.rgb(250,204,21) })
+                c.restore()
+                val alert=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color=Color.rgb(251,113,133);style=Paint.Style.STROKE;strokeWidth=9f;strokeCap=Paint.Cap.ROUND
+                }
+                c.drawCircle(400f,395f,48f,alert)
+                c.drawLine(400f,366f,400f,406f,alert)
+                c.drawCircle(400f,425f,6f,Paint().apply { color=Color.rgb(251,113,133) })
+            }
+
+            else -> {
+                // Servers / infrastructure closing scene.
+                for(row in 0..2) {
+                    val top=270f+row*170f
+                    val rack=RectF(150f,top,570f,top+125f)
+                    c.drawRoundRect(rack,22f,22f,Paint(Paint.ANTI_ALIAS_FLAG).apply { color=Color.argb(30,255,255,255) })
+                    c.drawRoundRect(rack,22f,22f,Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color=Color.argb(72,255,255,255);style=Paint.Style.STROKE;strokeWidth=3f
+                    })
+                    for(i in 0..4) {
+                        val dot=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                            color=if(row==1 && i>=3) Color.rgb(251,113,133) else accent
+                        }
+                        c.drawCircle(205f+i*42f,top+63f,8f,dot)
+                    }
+                    c.drawRoundRect(RectF(430f,top+47f,530f,top+61f),7f,7f,Paint().apply { color=Color.argb(80,255,255,255) })
+                }
+                val line=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color=accent2;strokeWidth=5f;strokeCap=Paint.Cap.ROUND
+                }
+                c.drawLine(360f,775f,360f,865f,line)
+                c.drawLine(300f,865f,420f,865f,line)
+            }
         }
-
-        val card=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=Color.argb(24,255,255,255) }
-        val border=Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color=Color.argb(48,255,255,255)
-            style=Paint.Style.STROKE
-            strokeWidth=2f
-        }
-        val r1=RectF(92f,245f,276f,342f)
-        val r2=RectF(354f,565f,618f,688f)
-        c.drawRoundRect(r1,24f,24f,card); c.drawRoundRect(r1,24f,24f,border)
-        c.drawRoundRect(r2,24f,24f,card); c.drawRoundRect(r2,24f,24f,border)
-
-        val accent=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=palette[3] }
-        c.drawRoundRect(RectF(118f,276f,205f,283f),4f,4f,accent)
-        c.drawRoundRect(RectF(382f,600f,500f,607f),4f,4f,accent)
-        drawGlassOrb(c,W*0.76f,H*0.22f,62f,palette[4])
     }
 
     private fun drawFinance(c:Canvas,rnd:Random,palette:IntArray) {
