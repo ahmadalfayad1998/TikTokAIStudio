@@ -69,6 +69,10 @@ jobs:
             git push
           fi
 
+      - name: Run unit tests
+        working-directory: android
+        run: gradle testDebugUnitTest --stacktrace
+
       - name: Build debug APK
         working-directory: android
         run: gradle assembleDebug --stacktrace
