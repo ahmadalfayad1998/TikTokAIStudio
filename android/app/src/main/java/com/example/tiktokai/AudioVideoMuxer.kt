@@ -10,9 +10,11 @@ object AudioVideoMuxer {
     fun mux(video: File, audio: File, output: File): File {
         if (output.exists()) output.delete()
         val videoEx = MediaExtractor()
+        val encodedAudio = File(output.parentFile, "tiktok_ai_voice_aac.m4a")
+        val aac = AacAudioEncoder.encodeToM4a(audio, encodedAudio)
         val audioEx = MediaExtractor()
         videoEx.setDataSource(video.absolutePath)
-        audioEx.setDataSource(audio.absolutePath)
+        audioEx.setDataSource(aac.absolutePath)
 
         val videoTrack = findTrack(videoEx, "video/")
         val audioTrack = findTrack(audioEx, "audio/")
@@ -34,6 +36,7 @@ object AudioVideoMuxer {
             muxer.release()
             videoEx.release()
             audioEx.release()
+            if (encodedAudio.exists()) encodedAudio.delete()
         }
         return output
     }
