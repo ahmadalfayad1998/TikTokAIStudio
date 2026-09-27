@@ -11,6 +11,8 @@
    android:hint="اكتب فكرة الفيديو"/>
   <Button android:id="@+id/generateBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
    android:text="✨ إنشاء المحتوى"/>
+  <TextView android:id="@+id/result" android:layout_width="match_parent" android:layout_height="wrap_content"
+   android:textIsSelectable="true" android:paddingTop="12dp" android:paddingBottom="12dp"/>
   <Button android:id="@+id/renderBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
    android:text="🎬 إنشاء الفيديو"/>
   <Button android:id="@+id/previewBtn" android:layout_width="match_parent" android:layout_height="wrap_content"
