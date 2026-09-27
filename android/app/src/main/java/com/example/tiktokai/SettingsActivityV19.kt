@@ -1,5 +1,8 @@
 package com.example.tiktokai
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.graphics.Color
 import android.os.Bundle
 import android.widget.*
@@ -45,6 +48,7 @@ class SettingsActivityV19 : AppCompatActivity() {
         }
         val save=Button(this).apply { text="حفظ الإعدادات" }
         val test=Button(this).apply { text="اختبار اتصال Backend" }
+        val diagnostics=Button(this).apply { text="نسخ تقرير التشخيص" }
         val testStatus=TextView(this).apply {
             setTextColor(Color.LTGRAY)
             setPadding(0,10,0,10)
@@ -62,12 +66,20 @@ class SettingsActivityV19 : AppCompatActivity() {
         root.addView(testStatus)
         root.addView(tiktokState)
         root.addView(save)
+        root.addView(diagnostics)
         setContentView(root)
 
         save.setOnClickListener {
             val value=backend.text.toString().trim().trimEnd('/')
             prefs.edit().putString("backend",value).apply()
             Toast.makeText(this,"تم الحفظ",Toast.LENGTH_SHORT).show()
+        }
+
+        diagnostics.setOnClickListener {
+            val report=AppDiagnostics.report(this)
+            val clipboard=getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("TikTok AI Studio Diagnostics",report))
+            Toast.makeText(this,"تم نسخ تقرير التشخيص",Toast.LENGTH_SHORT).show()
         }
 
         test.setOnClickListener {
