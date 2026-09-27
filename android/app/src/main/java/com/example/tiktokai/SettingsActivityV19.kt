@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
 import kotlin.concurrent.thread
 
 class SettingsActivityV19 : AppCompatActivity() {
@@ -40,6 +41,15 @@ class SettingsActivityV19 : AppCompatActivity() {
             setTextColor(Color.WHITE)
             setHintTextColor(Color.GRAY)
         }
+        val voiceState=TextView(this).apply {
+            val selected=prefs.getString("tts_voice_name","").orEmpty()
+            text=if(selected.isBlank()) "صوت الجهاز: تلقائي" else "صوت الجهاز: "+selected
+            setTextColor(Color.LTGRAY)
+            setPadding(0,18,0,8)
+        }
+        val chooseVoice=Button(this).apply { text="اختيار صوت عربي من الهاتف" }
+        val previewVoice=Button(this).apply { text="تجربة الصوت المحلي" }
+
         val tiktokState=TextView(this).apply {
             val connected=!prefs.getString("tiktok_session","").isNullOrBlank()
             text=if(connected) "TikTok: مرتبط ✓" else "TikTok: غير مرتبط"
@@ -64,6 +74,10 @@ class SettingsActivityV19 : AppCompatActivity() {
         root.addView(backend)
         root.addView(test)
         root.addView(testStatus)
+        root.addView(label("الصوت المحلي"))
+        root.addView(voiceState)
+        root.addView(chooseVoice)
+        root.addView(previewVoice)
         root.addView(tiktokState)
         root.addView(save)
         root.addView(diagnostics)
@@ -73,6 +87,45 @@ class SettingsActivityV19 : AppCompatActivity() {
             val value=backend.text.toString().trim().trimEnd('/')
             prefs.edit().putString("backend",value).apply()
             Toast.makeText(this,"تم الحفظ",Toast.LENGTH_SHORT).show()
+        }
+
+        chooseVoice.setOnClickListener {
+            chooseVoice.isEnabled=false
+            voiceState.text="جاري قراءة الأصوات العربية المثبتة…"
+            thread {
+                val voices=ArabicTtsEngine.listArabicVoices(this)
+                runOnUiThread {
+                    chooseVoice.isEnabled=true
+                    if(voices.isEmpty()) {
+                        voiceState.text="لم يتم العثور على أصوات عربية إضافية في محرك الهاتف"
+                        return@runOnUiThread
+                    }
+                    val labels=mutableListOf("تلقائي — اختيار أفضل صوت متاح")
+                    labels.addAll(voices.map { it.label })
+                    AlertDialog.Builder(this)
+                        .setTitle("اختر صوتًا عربيًا")
+                        .setItems(labels.toTypedArray()) { _,which ->
+                            if(which==0) {
+                                prefs.edit().remove("tts_voice_name").apply()
+                                voiceState.text="صوت الجهاز: تلقائي"
+                                ArabicTtsEngine.previewVoice(this,null)
+                            } else {
+                                val picked=voices[which-1]
+                                prefs.edit().putString("tts_voice_name",picked.name).apply()
+                                voiceState.text="صوت الجهاز: "+picked.name
+                                ArabicTtsEngine.previewVoice(this,picked.name)
+                            }
+                        }
+                        .setNegativeButton("إلغاء",null)
+                        .show()
+                }
+            }
+        }
+
+        previewVoice.setOnClickListener {
+            val selected=prefs.getString("tts_voice_name","").orEmpty().ifBlank { null }
+            ArabicTtsEngine.previewVoice(this,selected)
+            Toast.makeText(this,"يتم تشغيل معاينة الصوت",Toast.LENGTH_SHORT).show()
         }
 
         diagnostics.setOnClickListener {
