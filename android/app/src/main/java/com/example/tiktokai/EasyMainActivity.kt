@@ -16,6 +16,7 @@ class EasyMainActivity : AppCompatActivity() {
     private lateinit var result: TextView
     private var lastVideo: File? = null
     private var lastContent: BackendApiV16.GeneratedContent? = null
+    private lateinit var renderButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,7 +26,8 @@ class EasyMainActivity : AppCompatActivity() {
         result=findViewById(R.id.result)
 
         findViewById<Button>(R.id.generateBtn).setOnClickListener { generate() }
-        findViewById<Button>(R.id.renderBtn).setOnClickListener { renderVideo() }
+        renderButton=findViewById(R.id.renderBtn)
+        renderButton.setOnClickListener { renderVideo() }
         findViewById<Button>(R.id.previewBtn).setOnClickListener { previewVideo() }
         findViewById<Button>(R.id.connectBtn).setOnClickListener {
             status.text="ربط TikTok يحتاج Client Key معتمد من TikTok Developer"
@@ -50,6 +52,7 @@ class EasyMainActivity : AppCompatActivity() {
             return
         }
         status.text="جاري إنشاء الصوت العربي والفيديو العمودي…"
+        renderButton.isEnabled=false
         thread {
             try {
                 runOnUiThread { status.text="1/4 جاري إنشاء الصوت العربي…" }
@@ -65,9 +68,9 @@ class EasyMainActivity : AppCompatActivity() {
                 val finalFile=File(getExternalFilesDir(null),"tiktok_ai_final.mp4")
                 val file=AudioVideoMuxer.mux(silent,voice,finalFile)
                 lastVideo=file
-                runOnUiThread { status.text="تم إنشاء الفيديو ✓ — اضغط معاينة" }
+                runOnUiThread { status.text="تم إنشاء الفيديو ✓ — اضغط معاينة"; renderButton.isEnabled=true }
             } catch(ex:Exception) {
-                runOnUiThread { status.text="فشل إنشاء الفيديو: "+(ex.message ?: "خطأ غير معروف") }
+                runOnUiThread { status.text="فشل إنشاء الفيديو: "+(ex.message ?: "خطأ غير معروف"); renderButton.isEnabled=true }
             }
         }
     }
