@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">MatchBot</string>
+    <string name="accessibility_description">يلتقط شاشة اللعبة ويضغط على العناصر المتشابهة عند تشغيل الأتمتة.</string>
+</resources>
