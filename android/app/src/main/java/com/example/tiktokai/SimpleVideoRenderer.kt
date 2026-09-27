@@ -17,6 +17,32 @@ object SimpleVideoRenderer {
     private const val H=1280
     private const val FPS=15
 
+    fun previewFrame(
+        context:Context,
+        scenes:List<String>,
+        imageUris:List<Uri>,
+        sceneIndex:Int
+    ):Bitmap? {
+        if(scenes.isEmpty()) return null
+        val index=sceneIndex.coerceIn(0,scenes.lastIndex)
+        val currentUri=if(imageUris.isEmpty()) null else imageUris[index % imageUris.size]
+        val nextUri=if(index<scenes.lastIndex && imageUris.isNotEmpty())
+            imageUris[(index+1) % imageUris.size] else null
+        val current=currentUri?.let { decodeImage(context,it) }
+        val next=nextUri?.let { decodeImage(context,it) }
+        val target=Bitmap.createBitmap(W,H,Bitmap.Config.ARGB_8888)
+        return try {
+            drawFrame(target,scenes[index],index,scenes.size,current,next,0.42f)
+            target
+        } catch(ex:Exception) {
+            target.recycle()
+            null
+        } finally {
+            if(current!=null && !current.isRecycled) current.recycle()
+            if(next!=null && next!==current && !next.isRecycled) next.recycle()
+        }
+    }
+
     fun render(
         context:Context,
         scenes:List<String>,
