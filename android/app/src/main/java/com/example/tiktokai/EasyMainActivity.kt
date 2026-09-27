@@ -501,10 +501,17 @@ class EasyMainActivity : AppCompatActivity() {
         }
         if(requestCode!=imageRequestCode || resultCode!=RESULT_OK || data==null) return
         selectedImages.clear()
-        val flags=data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        val canPersistRead=(data.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION)!=0
         fun addUri(uri:Uri?) {
             if(uri==null || selectedImages.size>=10) return
-            try { contentResolver.takePersistableUriPermission(uri,flags and Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch(_:Exception) {}
+            if(canPersistRead) {
+                try {
+                    contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch(_:Exception) {}
+            }
             selectedImages.add(uri)
         }
         val clip=data.clipData
