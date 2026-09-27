@@ -107,7 +107,11 @@ object SimpleVideoRenderer {
     private fun decodeImage(context:Context,uri:Uri):Bitmap? {
         return try {
             val bounds=BitmapFactory.Options().apply { inJustDecodeBounds=true }
-            context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it,null,bounds) }
+            if(uri.scheme=="file") {
+                BitmapFactory.decodeFile(uri.path,null,bounds)
+            } else {
+                context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it,null,bounds) }
+            }
             if(bounds.outWidth<=0 || bounds.outHeight<=0) return null
             var sample=1
             while(bounds.outWidth/sample>1600 || bounds.outHeight/sample>1600) sample*=2
@@ -115,7 +119,11 @@ object SimpleVideoRenderer {
                 inSampleSize=sample
                 inPreferredConfig=Bitmap.Config.ARGB_8888
             }
-            context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it,null,opts) }
+            if(uri.scheme=="file") {
+                BitmapFactory.decodeFile(uri.path,opts)
+            } else {
+                context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it,null,opts) }
+            }
         } catch(_:Exception) { null }
     }
 
