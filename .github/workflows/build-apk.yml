@@ -73,9 +73,17 @@ jobs:
         working-directory: android
         run: gradle testDebugUnitTest --stacktrace
 
+      - name: Run Android lint
+        working-directory: android
+        run: gradle lintDebug --stacktrace
+
       - name: Build debug APK
         working-directory: android
         run: gradle assembleDebug --stacktrace
+
+      - name: Verify unsigned release build
+        working-directory: android
+        run: gradle assembleRelease --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
