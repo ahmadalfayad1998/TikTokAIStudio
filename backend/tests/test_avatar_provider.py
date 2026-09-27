@@ -13,12 +13,12 @@ class AvatarProviderTests(unittest.TestCase):
         payload=avatar_provider._talk_payload(
             "مرحبا بكم",
             "https://example.com/man.png",
-            "ar-SA-HamedNeural",
+            "ar-SY-LaithNeural",
             0.95,
         )
         provider=payload["script"]["provider"]
         self.assertEqual("microsoft",provider["type"])
-        self.assertEqual("ar-SA-HamedNeural",provider["voice_id"])
+        self.assertEqual("ar-SY-LaithNeural",provider["voice_id"])
         self.assertEqual("https://example.com/man.png",payload["source_url"])
 
     def test_payload_rejects_empty_text(self):
@@ -26,7 +26,7 @@ class AvatarProviderTests(unittest.TestCase):
             avatar_provider._talk_payload(
                 "   ",
                 "https://example.com/man.png",
-                "ar-SA-HamedNeural",
+                "ar-SY-LaithNeural",
                 1.0,
             )
 
