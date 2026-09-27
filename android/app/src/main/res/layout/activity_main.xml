@@ -166,20 +166,48 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="3. إنشاء الفيديو"
+            android:text="3. اختر نوع الفيديو"
             android:textColor="#FFFFFF"
             android:textSize="18sp"
             android:textStyle="bold"
             android:paddingBottom="8dp"/>
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="إذا أردت شخصًا يتكلم اختر أحد وضعي المقدم. فيديو المشاهد يبقى خيارًا منفصلًا."
+            android:textColor="#9CA3AF"
+            android:textSize="13sp"
+            android:paddingBottom="8dp"/>
+
+        <Button
+            android:id="@+id/localPresenterBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🧑‍💼 مقدم محلي متحرك — بدون Backend"
+            android:textAllCaps="false"
+            android:textColor="#061314"
+            android:backgroundTint="#5EEAD4"/>
+
+        <Button
+            android:id="@+id/realPresenterBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="👤 مقدم واقعي AI بصوت رجل — يحتاج Backend"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#4F46E5"
+            android:layout_marginTop="6dp"/>
+
         <Button
             android:id="@+id/renderBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="🎬 إنشاء الفيديو"
+            android:text="🎬 فيديو مشاهد فقط"
             android:textAllCaps="false"
-            android:textColor="#061314"
-            android:backgroundTint="#5EEAD4"/>
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#374151"
+            android:layout_marginTop="6dp"/>
 
         <Button
             android:id="@+id/previewBtn"
