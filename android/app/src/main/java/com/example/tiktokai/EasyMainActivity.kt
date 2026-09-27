@@ -23,6 +23,7 @@ class EasyMainActivity : AppCompatActivity() {
     private lateinit var autoImagesButton: Button
     private val selectedImages=mutableListOf<Uri>()
     private val imageRequestCode=701
+    private val projectsRequestCode=702
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +42,8 @@ class EasyMainActivity : AppCompatActivity() {
         renderButton.setOnClickListener { renderVideo() }
         findViewById<Button>(R.id.previewBtn).setOnClickListener { previewVideo() }
         findViewById<Button>(R.id.shareBtn).setOnClickListener { shareVideo() }
+        findViewById<Button>(R.id.saveCopyBtn).setOnClickListener { saveProjectCopy() }
+        findViewById<Button>(R.id.projectsBtn).setOnClickListener { openProjects() }
         findViewById<Button>(R.id.newProjectBtn).setOnClickListener { newProject() }
         findViewById<Button>(R.id.connectBtn).setOnClickListener { connectTikTok() }
         findViewById<Button>(R.id.publishBtn).setOnClickListener { publishTikTok() }
@@ -392,6 +395,13 @@ class EasyMainActivity : AppCompatActivity() {
     @Deprecated("Deprecated in Android API, kept for broad device compatibility")
     override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
+        if(requestCode==projectsRequestCode) {
+            if(resultCode==RESULT_OK) {
+                restoreProject()
+                status.text="تم فتح المشروع ✓"
+            }
+            return
+        }
         if(requestCode!=imageRequestCode || resultCode!=RESULT_OK || data==null) return
         selectedImages.clear()
         val flags=data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
@@ -408,6 +418,22 @@ class EasyMainActivity : AppCompatActivity() {
         saveProject()
     }
 
+
+
+    private fun saveProjectCopy() {
+        val state=ProjectStore.State(topic.text.toString(),lastContent,selectedImages.toList())
+        if(state.topic.isBlank() && state.content==null) {
+            status.text="لا يوجد مشروع لحفظه"
+            return
+        }
+        saveProject()
+        val saved=ProjectStore.archiveCurrent(this,state)
+        status.text="تم حفظ نسخة: "+saved.title+" ✓"
+    }
+
+    private fun openProjects() {
+        startActivityForResult(Intent(this,ProjectsActivity::class.java),projectsRequestCode)
+    }
 
     private fun saveProject() {
         ProjectStore.save(this,topic.text.toString(),lastContent,selectedImages)
