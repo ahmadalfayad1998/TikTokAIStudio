@@ -6,6 +6,33 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object BackendApiV16 {
+    data class GeneratedContent(
+        val title:String,
+        val hook:String,
+        val description:String,
+        val hashtags:List<String>,
+        val scenes:List<String>
+    )
+
+    fun generateContent(base:String, topic:String, language:String="ar"):GeneratedContent {
+        val root=jsonPost(base,"/generate","",JSONObject().put("topic",topic).put("language",language))
+        val data=root.optJSONObject("data") ?: root
+        fun array(name:String):List<String> {
+            val a=data.optJSONArray(name) ?: return emptyList()
+            return (0 until a.length()).map { i ->
+                val item=a.opt(i)
+                if(item is JSONObject) item.optString("text",item.toString()) else item.toString()
+            }
+        }
+        return GeneratedContent(
+            data.optString("title"),
+            data.optString("hook"),
+            data.optString("description"),
+            array("hashtags"),
+            array("scenes")
+        )
+    }
+
     data class CreatorInfo(
         val username:String, val nickname:String, val privacyOptions:List<String>,
         val commentDisabled:Boolean, val duetDisabled:Boolean, val stitchDisabled:Boolean,
