@@ -34,6 +34,8 @@ class EasyMainActivity : AppCompatActivity() {
         renderButton=findViewById(R.id.renderBtn)
         renderButton.setOnClickListener { renderVideo() }
         findViewById<Button>(R.id.previewBtn).setOnClickListener { previewVideo() }
+        findViewById<Button>(R.id.shareBtn).setOnClickListener { shareVideo() }
+        findViewById<Button>(R.id.newProjectBtn).setOnClickListener { newProject() }
         findViewById<Button>(R.id.connectBtn).setOnClickListener {
             status.text="ربط TikTok يحتاج Client Key معتمد من TikTok Developer"
         }
@@ -43,6 +45,7 @@ class EasyMainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.settingsBtn).setOnClickListener {
             startActivity(Intent(this, SettingsActivityV19::class.java))
         }
+        restoreProject()
     }
 
 
@@ -71,6 +74,51 @@ class EasyMainActivity : AppCompatActivity() {
             for(i in 0 until clip.itemCount) addUri(clip.getItemAt(i).uri)
         } else addUri(data.data)
         imagesStatus.text=if(selectedImages.isEmpty()) "لم يتم اختيار صور" else "تم اختيار "+selectedImages.size+" صورة ✓"
+        saveProject()
+    }
+
+
+    private fun saveProject() {
+        ProjectStore.save(this,topic.text.toString(),lastContent,selectedImages)
+    }
+
+    private fun restoreProject() {
+        val state=ProjectStore.load(this) ?: return
+        topic.setText(state.topic)
+        lastContent=state.content
+        selectedImages.clear()
+        selectedImages.addAll(state.images)
+        if(state.content!=null) result.text=displayContent(state.content)
+        imagesStatus.text=if(selectedImages.isEmpty()) "لم يتم اختيار صور بعد" else "تم استرجاع "+selectedImages.size+" صورة ✓"
+        status.text="تم استرجاع آخر مشروع ✓"
+        val existing=File(getExternalFilesDir(null),"tiktok_ai_final.mp4")
+        if(existing.exists()) lastVideo=existing
+    }
+
+    private fun newProject() {
+        lastContent=null
+        lastVideo=null
+        selectedImages.clear()
+        topic.setText("")
+        result.text=""
+        imagesStatus.text="لم يتم اختيار صور بعد"
+        status.text="مشروع جديد"
+        ProjectStore.clear(this)
+    }
+
+    private fun shareVideo() {
+        val file=lastVideo ?: File(getExternalFilesDir(null),"tiktok_ai_final.mp4")
+        if(!file.exists()) {
+            status.text="أنشئ الفيديو أولاً"
+            return
+        }
+        val uri=FileProvider.getUriForFile(this,packageName+".provider",file)
+        val share=Intent(Intent.ACTION_SEND).apply {
+            type="video/mp4"
+            putExtra(Intent.EXTRA_STREAM,uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(share,"مشاركة الفيديو"))
     }
 
     private fun renderVideo() {
@@ -109,7 +157,11 @@ class EasyMainActivity : AppCompatActivity() {
                     throw IllegalStateException("المرحلة 4/4: "+(ex.message ?: "فشل دمج الصوت والفيديو"), ex)
                 }
                 lastVideo=file
-                runOnUiThread { status.text="تم إنشاء الفيديو ✓ — اضغط معاينة"; renderButton.isEnabled=true }
+                runOnUiThread {
+                    status.text="تم إنشاء الفيديو ✓ — يمكنك المعاينة أو المشاركة"
+                    renderButton.isEnabled=true
+                    saveProject()
+                }
             } catch(ex:Exception) {
                 runOnUiThread { status.text="فشل إنشاء الفيديو: "+(ex.message ?: "خطأ غير معروف"); renderButton.isEnabled=true }
             }
@@ -173,6 +225,7 @@ class EasyMainActivity : AppCompatActivity() {
             lastContent=c
             result.text=displayContent(c)
             status.text="وضع الاختبار المحلي ✓"
+            saveProject()
             return
         }
         thread {
@@ -183,6 +236,7 @@ class EasyMainActivity : AppCompatActivity() {
                 runOnUiThread {
                     result.text=if(text.isBlank()) "وصل رد من الخادم لكنه لا يحتوي محتوى صالحًا." else text
                     status.text="تم إنشاء المحتوى ✓"
+                    saveProject()
                 }
             } catch(ex:Exception) {
                 val c=offlineDemoContent(idea)
@@ -191,6 +245,7 @@ class EasyMainActivity : AppCompatActivity() {
                 runOnUiThread {
                     result.text=text
                     status.text="وضع الاختبار المحلي ✓ — الخادم غير متصل"
+                    saveProject()
                 }
             }
         }
