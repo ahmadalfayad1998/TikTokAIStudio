@@ -340,13 +340,11 @@ class EasyMainActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun visualPrompts(content:BackendApiV16.GeneratedContent):List<String> {
-        return content.visualPrompts.ifEmpty {
-            (listOf(content.hook)+content.scenes)
-                .filter { it.isNotBlank() }
-                .map { "Cinematic vertical 9:16 scene, no text, no watermark: "+it }
-        }
-    }
+    private fun scenePlans(content:BackendApiV16.GeneratedContent):List<ScenePlan> =
+        ScenePlanner.build(content.hook,content.scenes,content.visualPrompts)
+
+    private fun visualPrompts(content:BackendApiV16.GeneratedContent):List<String> =
+        scenePlans(content).map { it.visualPrompt }
 
     private fun generateLocalScenes() {
         val content=lastContent
@@ -431,7 +429,7 @@ class EasyMainActivity : AppCompatActivity() {
 
     private fun previewScenes():List<String> {
         val content=lastContent ?: return emptyList()
-        return (listOf(content.hook)+content.scenes).filter { it.isNotBlank() }
+        return scenePlans(content).map { it.caption }
     }
 
     private fun updateScenePreview(reset:Boolean=true) {
@@ -593,10 +591,11 @@ class EasyMainActivity : AppCompatActivity() {
             status.text="أنشئ المحتوى أولاً"
             return
         }
-        val scenes=(listOf(content.hook)+content.scenes).filter { it.isNotBlank() }
-        val narration=scenes.joinToString(". ")
-        if(narration.isBlank()) {
-            status.text="المحتوى لا يحتوي نصًا صالحًا للصوت"
+        val plans=scenePlans(content)
+        val captions=plans.map { it.caption }
+        val narration=plans.joinToString(". ") { it.narration }
+        if(plans.isEmpty() || narration.isBlank()) {
+            status.text="المحتوى لا يحتوي مشاهد صالحة للفيديو"
             return
         }
 
@@ -626,7 +625,7 @@ class EasyMainActivity : AppCompatActivity() {
 
                 runOnUiThread { status.text="4/5 جاري إنشاء الفيديو العمودي…" }
                 val silent=try {
-                    SimpleVideoRenderer.render(this,scenes,duration+500L,renderImages)
+                    SimpleVideoRenderer.render(this,captions,duration+500L,renderImages)
                 } catch(ex:Exception) {
                     throw IllegalStateException("مرحلة الفيديو: "+(ex.message ?: "فشل ترميز الفيديو"),ex)
                 }
