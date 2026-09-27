@@ -36,7 +36,7 @@ object SimpleVideoRenderer {
  private fun draw(surface:Surface,lines:List<String>,frame:Int){val c=surface.lockCanvas(null);try{c.drawColor(Color.rgb(12,14,24))
   val p=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.WHITE;textSize=42f;textAlign=Paint.Align.CENTER;typeface=Typeface.create(Typeface.DEFAULT,Typeface.BOLD)}
   val s=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.LTGRAY;textSize=26f;textAlign=Paint.Align.CENTER}
-  c.drawText("TikTok AI Studio",W/2f,120f,p);var y=300f;lines.forEach{c.drawText(it,W/2f,y,p);y+=58f};c.drawText("AI • "+(frame/FPS+1)+"s",W/2f,H-90f,s)
+  var y=220f;lines.forEach{c.drawText(it,W/2f,y,p);y+=58f};c.drawText((frame/FPS+1).toString()+"s",W/2f,H-90f,s)
  }finally{surface.unlockCanvasAndPost(c)}}
  private fun wrap(text:String,n:Int):List<String>{val out=mutableListOf<String>();var line="";for(w in text.split(Regex("\\s+")).filter{it.isNotBlank()}){val next=if(line.isEmpty())w else line+" "+w;if(next.length>n&&line.isNotEmpty()){out.add(line);line=w}else line=next};if(line.isNotEmpty())out.add(line);return out}
 }
