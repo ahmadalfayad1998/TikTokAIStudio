@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.net.Uri
 import android.media.MediaMetadataRetriever
+import android.util.Base64
 import androidx.core.content.FileProvider
 import java.io.File
 import android.widget.*
@@ -19,6 +20,7 @@ class EasyMainActivity : AppCompatActivity() {
     private var lastContent: BackendApiV16.GeneratedContent? = null
     private lateinit var renderButton: Button
     private lateinit var imagesStatus: TextView
+    private lateinit var autoImagesButton: Button
     private val selectedImages=mutableListOf<Uri>()
     private val imageRequestCode=701
 
@@ -32,6 +34,8 @@ class EasyMainActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.generateBtn).setOnClickListener { generate() }
         findViewById<Button>(R.id.pickImagesBtn).setOnClickListener { pickImages() }
+        autoImagesButton=findViewById(R.id.autoImagesBtn)
+        autoImagesButton.setOnClickListener { generateAutomaticImages() }
         renderButton=findViewById(R.id.renderBtn)
         renderButton.setOnClickListener { renderVideo() }
         findViewById<Button>(R.id.previewBtn).setOnClickListener { previewVideo() }
@@ -242,6 +246,59 @@ class EasyMainActivity : AppCompatActivity() {
         runOnUiThread { status.text="تم إرسال الفيديو وTikTok ما زال يعالجه" }
     }
 
+
+    private fun generateAutomaticImages() {
+        val content=lastContent
+        if(content==null) {
+            status.text="أنشئ المحتوى أولاً"
+            return
+        }
+        val base=backendUrl()
+        if(base.contains("10.0.2.2")) {
+            status.text="الصور التلقائية تحتاج Backend متصل ومزود صور مفعّل"
+            return
+        }
+        val prompts=content.visualPrompts.ifEmpty {
+            (listOf(content.hook)+content.scenes)
+                .filter { it.isNotBlank() }
+                .map { "Cinematic vertical 9:16 scene, no text, no watermark: $it" }
+        }
+        if(prompts.isEmpty()) {
+            status.text="لا توجد أوصاف بصرية لتوليد الصور"
+            return
+        }
+        autoImagesButton.isEnabled=false
+        status.text="جاري توليد صور المشاهد…"
+        thread {
+            try {
+                val encoded=BackendApiV16.generateVisuals(base,prompts)
+                if(encoded.isEmpty()) throw IllegalStateException("الخادم لم يرجع صورًا")
+                val dir=File(getExternalFilesDir("visuals"),"generated").apply { mkdirs() }
+                val newUris=mutableListOf<Uri>()
+                encoded.forEachIndexed { index,raw ->
+                    val clean=if(raw.startsWith("data:") && raw.contains(",")) raw.substringAfter(",") else raw
+                    val bytes=Base64.decode(clean,Base64.DEFAULT)
+                    val file=File(dir,"scene_"+(index+1)+".png")
+                    file.writeBytes(bytes)
+                    newUris.add(Uri.fromFile(file))
+                }
+                runOnUiThread {
+                    selectedImages.clear()
+                    selectedImages.addAll(newUris)
+                    imagesStatus.text="تم توليد "+newUris.size+" صورة تلقائيًا ✓"
+                    status.text="الصور جاهزة ✓ — يمكنك إنشاء الفيديو"
+                    autoImagesButton.isEnabled=true
+                    saveProject()
+                }
+            } catch(ex:Exception) {
+                runOnUiThread {
+                    autoImagesButton.isEnabled=true
+                    status.text="تعذر توليد الصور: "+(ex.message ?: "تحقق من مزود الصور في Backend")
+                }
+            }
+        }
+    }
+
     private fun pickImages() {
         val intent=Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             type="image/*"
@@ -405,6 +462,14 @@ class EasyMainActivity : AppCompatActivity() {
             "بعدها تبدأ التأثيرات بالظهور في حياتنا اليومية بشكل واضح.",
             "بعض النتائج ستكون متوقعة، لكن نتائج أخرى قد تفاجئنا.",
             "والآن دورك: ماذا تتوقع أن يحدث؟"
+        ),
+        visualPrompts=listOf(
+            "Cinematic vertical image illustrating the hook for: $idea, realistic, dramatic lighting, no text",
+            "Cinematic vertical scene about: $idea, people reacting, realistic, no text",
+            "Cinematic vertical scene showing immediate consequences, realistic, no text",
+            "Cinematic vertical scene showing daily-life impact, realistic, no text",
+            "Cinematic vertical scene showing surprising consequences, realistic, no text",
+            "Cinematic vertical closing scene inviting reflection, realistic, no text"
         )
     )
 
