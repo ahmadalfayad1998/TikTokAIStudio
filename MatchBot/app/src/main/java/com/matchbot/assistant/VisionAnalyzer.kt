@@ -346,8 +346,7 @@ class VisionAnalyzer {
             saturationTotal /
                 count
 
-        return
-            std * 0.52f +
+        return std * 0.52f +
                 edgeMean * 0.33f +
                 satMean * 18f
     }
@@ -622,8 +621,7 @@ class VisionAnalyzer {
             return 0f
         }
 
-        return
-            (
+        return (
                 dot /
                     sqrt(aa * bb)
                 ).coerceIn(
@@ -657,8 +655,7 @@ class VisionAnalyzer {
         val b =
             color and 0xff
 
-        return
-            0.2126f * r +
+        return 0.2126f * r +
                 0.7152f * g +
                 0.0722f * b
     }
@@ -686,8 +683,7 @@ class VisionAnalyzer {
                 min(g, b)
             )
 
-        return
-            if (hi <= 1e-6f) {
+        return if (hi <= 1e-6f) {
                 0f
             } else {
                 (hi - lo) / hi
@@ -705,8 +701,7 @@ class VisionAnalyzer {
         val dy =
             (y1 - y2).toFloat()
 
-        return
-            sqrt(
+        return sqrt(
                 dx * dx +
                     dy * dy
             )
