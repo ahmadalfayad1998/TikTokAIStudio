@@ -17,6 +17,7 @@ class GameAutomationService : AccessibilityService() {
     private val analyzerExecutor = Executors.newSingleThreadExecutor()
     private val analyzer = VisionAnalyzer()
     private val captureBusy = AtomicBoolean(false)
+
     private var overlay: OverlayController? = null
     private var running = false
     private var generation = 0L
@@ -29,7 +30,10 @@ class GameAutomationService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
-    override fun onInterrupt() = stopAutomation()
+
+    override fun onInterrupt() {
+        stopAutomation()
+    }
 
     override fun onDestroy() {
         stopAutomation()
@@ -44,8 +48,8 @@ class GameAutomationService : AccessibilityService() {
         running = true
         generation++
         overlay?.setRunning(true)
-        overlay?.updateStatus("يحلل الشاشة…")
-        scheduleNext(100L, generation)
+        overlay?.updateStatus("يحلل لوحة اللعب…")
+        scheduleNext(120L, generation)
     }
 
     private fun stopAutomation() {
@@ -64,6 +68,7 @@ class GameAutomationService : AccessibilityService() {
 
     private fun captureAndAnalyze(token: Long) {
         if (!running || token != generation) return
+
         if (!captureBusy.compareAndSet(false, true)) {
             scheduleNext(150L, token)
             return
@@ -87,11 +92,14 @@ class GameAutomationService : AccessibilityService() {
                     }
 
                     val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
-                    val threshold = prefs.getFloat(MainActivity.KEY_CONFIDENCE, 0.965f)
+                    val threshold = prefs.getFloat(MainActivity.KEY_CONFIDENCE_V2, 0.92f)
                     val interval = prefs.getLong(MainActivity.KEY_INTERVAL_MS, 850L)
 
                     analyzerExecutor.execute {
-                        val result = runCatching { analyzer.findTriple(bitmap, threshold) }.getOrNull()
+                        val result = runCatching {
+                            analyzer.findTriple(bitmap, threshold)
+                        }.getOrNull()
+
                         bitmap.recycle()
 
                         mainHandler.post {
@@ -99,13 +107,18 @@ class GameAutomationService : AccessibilityService() {
                             if (!running || token != generation) return@post
 
                             if (result == null) {
-                                overlay?.updateStatus("لا يوجد تطابق آمن")
+                                overlay?.updateStatus("أبحث عن 3 قطع متطابقة…")
                                 scheduleNext(interval, token)
                             } else {
+                                val pct = (result.confidence * 100f).toInt()
                                 overlay?.updateStatus(
-                                    "تطابق \${(result.confidence * 100).toInt()}% • \${result.candidateCount} مرشح"
+                                    "تطابق $pct% • ${result.candidateCount} مرشح"
                                 )
-                                tapTriple(result.points.map { it.x to it.y }) {
+
+                                tapSequence(
+                                    points = result.points.map { it.x to it.y },
+                                    token = token
+                                ) {
                                     if (running && token == generation) {
                                         scheduleNext(maxOf(interval, 700L), token)
                                     }
@@ -124,38 +137,56 @@ class GameAutomationService : AccessibilityService() {
         )
     }
 
-    private fun tapTriple(points: List<Pair<Float, Float>>, done: () -> Unit) {
-        if (points.size != 3 || !running) {
+    private fun tapSequence(
+        points: List<Pair<Float, Float>>,
+        token: Long,
+        done: () -> Unit
+    ) {
+        if (points.size != 3 || !running || token != generation) {
             done()
             return
         }
 
-        val builder = GestureDescription.Builder()
-        points.forEachIndexed { index, (x, y) ->
+        fun tapAt(index: Int) {
+            if (!running || token != generation) {
+                done()
+                return
+            }
+
+            if (index >= points.size) {
+                done()
+                return
+            }
+
+            val (x, y) = points[index]
             val path = Path().apply { moveTo(x, y) }
-            builder.addStroke(
-                GestureDescription.StrokeDescription(
-                    path,
-                    index * 140L,
-                    70L
-                )
+            val gesture = GestureDescription.Builder()
+                .addStroke(GestureDescription.StrokeDescription(path, 0L, 80L))
+                .build()
+
+            val accepted = dispatchGesture(
+                gesture,
+                object : GestureResultCallback() {
+                    override fun onCompleted(gestureDescription: GestureDescription?) {
+                        super.onCompleted(gestureDescription)
+                        mainHandler.postDelayed({ tapAt(index + 1) }, 130L)
+                    }
+
+                    override fun onCancelled(gestureDescription: GestureDescription?) {
+                        super.onCancelled(gestureDescription)
+                        overlay?.updateStatus("أعيد محاولة الضغط…")
+                        mainHandler.postDelayed({ tapAt(index + 1) }, 180L)
+                    }
+                },
+                mainHandler
             )
+
+            if (!accepted) {
+                overlay?.updateStatus("تعذر إرسال الضغط")
+                mainHandler.postDelayed({ tapAt(index + 1) }, 180L)
+            }
         }
 
-        dispatchGesture(
-            builder.build(),
-            object : GestureResultCallback() {
-                override fun onCompleted(gestureDescription: GestureDescription?) {
-                    super.onCompleted(gestureDescription)
-                    done()
-                }
-
-                override fun onCancelled(gestureDescription: GestureDescription?) {
-                    super.onCancelled(gestureDescription)
-                    done()
-                }
-            },
-            mainHandler
-        )
+        tapAt(0)
     }
 }
