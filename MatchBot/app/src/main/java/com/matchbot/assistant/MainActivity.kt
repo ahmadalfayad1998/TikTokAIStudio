@@ -26,23 +26,33 @@ class MainActivity : AppCompatActivity() {
         val intervalSeek = findViewById<SeekBar>(R.id.intervalSeek)
         val intervalValue = findViewById<TextView>(R.id.intervalValue)
 
-        val savedConfidence = prefs.getFloat(KEY_CONFIDENCE, 0.965f)
-        confidenceSeek.progress = (((savedConfidence - 0.90f) / 0.001f).roundToInt()).coerceIn(0, 90)
+        val savedConfidence = prefs.getFloat(KEY_CONFIDENCE_V2, 0.92f)
+
+        confidenceSeek.max = 90
+        confidenceSeek.progress =
+            (((savedConfidence - 0.88f) / 0.001f).roundToInt()).coerceIn(0, 90)
         updateConfidenceLabel(confidenceValue, savedConfidence)
 
         val savedInterval = prefs.getLong(KEY_INTERVAL_MS, 850L).toInt()
         intervalSeek.progress = (savedInterval - 500).coerceIn(0, 1000)
-        intervalValue.text = "\${savedInterval} ms"
+        intervalValue.text = "$savedInterval ms"
 
         openAccessibility.setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
 
         confidenceSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                val value = 0.90f + progress * 0.001f
+            override fun onProgressChanged(
+                seekBar: SeekBar?,
+                progress: Int,
+                fromUser: Boolean
+            ) {
+                val value = 0.88f + progress * 0.001f
                 updateConfidenceLabel(confidenceValue, value)
-                if (fromUser) prefs.edit().putFloat(KEY_CONFIDENCE, value).apply()
+
+                if (fromUser) {
+                    prefs.edit().putFloat(KEY_CONFIDENCE_V2, value).apply()
+                }
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
@@ -50,26 +60,33 @@ class MainActivity : AppCompatActivity() {
         })
 
         intervalSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+            override fun onProgressChanged(
+                seekBar: SeekBar?,
+                progress: Int,
+                fromUser: Boolean
+            ) {
                 val value = 500L + progress
                 intervalValue.text = "$value ms"
-                if (fromUser) prefs.edit().putLong(KEY_INTERVAL_MS, value).apply()
+
+                if (fromUser) {
+                    prefs.edit().putLong(KEY_INTERVAL_MS, value).apply()
+                }
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
             override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
         })
 
-        serviceStatus.text = if (isServiceEnabled(this)) {
-            "الحالة: خدمة MatchBot مفعّلة"
-        } else {
-            "الحالة: فعّل خدمة MatchBot من إعدادات إمكانية الوصول"
-        }
+        serviceStatus.text = currentServiceStatus(this)
     }
 
     override fun onResume() {
         super.onResume()
-        findViewById<TextView>(R.id.serviceStatus)?.text = if (isServiceEnabled(this)) {
+        findViewById<TextView>(R.id.serviceStatus)?.text = currentServiceStatus(this)
+    }
+
+    private fun currentServiceStatus(context: Context): String {
+        return if (isServiceEnabled(context)) {
             "الحالة: خدمة MatchBot مفعّلة"
         } else {
             "الحالة: فعّل خدمة MatchBot من إعدادات إمكانية الوصول"
@@ -81,14 +98,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun isServiceEnabled(context: Context): Boolean {
-        val manager = context.getSystemService(ACCESSIBILITY_SERVICE) as AccessibilityManager
-        return manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+        val manager =
+            context.getSystemService(ACCESSIBILITY_SERVICE) as AccessibilityManager
+
+        return manager
+            .getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
             .any { it.resolveInfo.serviceInfo.packageName == context.packageName }
     }
 
     companion object {
         const val PREFS = "matchbot_prefs"
         const val KEY_CONFIDENCE = "confidence"
+        const val KEY_CONFIDENCE_V2 = "confidence_v2"
         const val KEY_INTERVAL_MS = "interval_ms"
     }
 }
