@@ -8,11 +8,13 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
- * MatchBot v0.2 matcher.
+ * MatchBot v0.2.1
  *
- * v0.1 could accidentally treat the black side bars around Match Factory as
- * visually identical objects. v0.2 first detects the actual game viewport,
- * ignores top/bottom UI, then compares compact local colour/texture descriptors.
+ * Tuned for Match Factory on tablets/phones:
+ * - detects the real game viewport and ignores black side bars
+ * - analyzes only the central object pile, not goals/tray/boosters
+ * - uses a denser candidate grid so small/overlapping objects are not skipped
+ * - compares multi-scale colour + radial texture descriptors
  */
 class VisionAnalyzer {
 
@@ -34,67 +36,85 @@ class VisionAnalyzer {
     fun findTriple(bitmap: Bitmap, threshold: Float): MatchResult? {
         if (bitmap.width < 300 || bitmap.height < 500) return null
 
-        val bounds = detectGameViewport(bitmap)
-        val areaWidth = bounds.right - bounds.left
-        if (areaWidth < bitmap.width * 0.30f) return null
+        val viewport = detectGameViewport(bitmap)
+        val viewportWidth = viewport.right - viewport.left
+        if (viewportWidth < bitmap.width * 0.30f) return null
 
-        // Keep only the pile itself; exclude goal cards, timer, tray and boosters.
-        val top = (bitmap.height * 0.18f).toInt()
-        val bottom = (bitmap.height * 0.76f).toInt()
+        val boardLeft = (viewport.left + viewportWidth * 0.17f).toInt()
+        val boardRight = (viewport.right - viewportWidth * 0.17f).toInt()
+        val boardTop = (bitmap.height * 0.17f).toInt()
+        val boardBottom = (bitmap.height * 0.77f).toInt()
 
         val candidates = collectCandidates(
             bitmap = bitmap,
-            left = bounds.left,
-            top = top,
-            right = bounds.right,
-            bottom = bottom,
-            areaWidth = areaWidth
+            left = boardLeft,
+            top = boardTop,
+            right = boardRight,
+            bottom = boardBottom,
+            viewportWidth = viewportWidth
         )
 
         if (candidates.size < 3) return null
 
-        var best: List<Candidate>? = null
+        val n = candidates.size
+        val sim = Array(n) { FloatArray(n) }
+
+        for (i in 0 until n) {
+            sim[i][i] = 1f
+            for (j in i + 1 until n) {
+                val s = similarity(
+                    candidates[i].descriptor,
+                    candidates[j].descriptor
+                )
+                sim[i][j] = s
+                sim[j][i] = s
+            }
+        }
+
+        var bestIndices: IntArray? = null
         var bestScore = -1f
 
-        for (i in 0 until candidates.size - 2) {
-            for (j in i + 1 until candidates.size - 1) {
-                val s1 = similarity(candidates[i].descriptor, candidates[j].descriptor)
+        for (i in 0 until n - 2) {
+            for (j in i + 1 until n - 1) {
+                val s1 = sim[i][j]
                 if (s1 < threshold) continue
 
-                for (k in j + 1 until candidates.size) {
-                    val s2 = similarity(candidates[i].descriptor, candidates[k].descriptor)
-                    if (s2 < threshold) continue
+                for (k in j + 1 until n) {
+                    val s2 = sim[i][k]
+                    val s3 = sim[j][k]
+                    val minPair = min(s1, min(s2, s3))
+                    if (minPair < threshold) continue
 
-                    val s3 = similarity(candidates[j].descriptor, candidates[k].descriptor)
-                    if (s3 < threshold) continue
+                    val average = (s1 + s2 + s3) / 3f
+                    val score = average * 0.72f + minPair * 0.28f
 
-                    val score = (s1 + s2 + s3) / 3f
                     if (score > bestScore) {
                         bestScore = score
-                        best = listOf(candidates[i], candidates[j], candidates[k])
+                        bestIndices = intArrayOf(i, j, k)
                     }
                 }
             }
         }
 
-        val selected = best ?: return null
+        val ids = bestIndices ?: return null
+
         return MatchResult(
-            points = selected.map { PointF(it.x.toFloat(), it.y.toFloat()) },
+            points = ids.map { idx ->
+                PointF(
+                    candidates[idx].x.toFloat(),
+                    candidates[idx].y.toFloat()
+                )
+            },
             confidence = bestScore,
             candidateCount = candidates.size
         )
     }
 
-    /**
-     * Detects the bright, continuous Match Factory game viewport and rejects the
-     * black Android/tablet bars around it. This is intentionally based on many
-     * vertical samples so the MatchBot overlay cannot create a fake viewport.
-     */
     private fun detectGameViewport(bitmap: Bitmap): HorizontalBounds {
         val yStart = (bitmap.height * 0.08f).toInt()
-        val yEnd = (bitmap.height * 0.90f).toInt()
-        val xStep = max(3, bitmap.width / 260)
-        val yStep = max(4, bitmap.height / 150)
+        val yEnd = (bitmap.height * 0.92f).toInt()
+        val xStep = max(3, bitmap.width / 280)
+        val yStep = max(4, bitmap.height / 160)
 
         data class Segment(val start: Int, val end: Int)
 
@@ -113,7 +133,9 @@ class VisionAnalyzer {
                 y += yStep
             }
 
-            val active = count > 0 && bright.toFloat() / count.toFloat() > 0.52f
+            val active =
+                count > 0 &&
+                    bright.toFloat() / count.toFloat() > 0.46f
 
             if (active && segmentStart < 0) {
                 segmentStart = x
@@ -125,15 +147,30 @@ class VisionAnalyzer {
             x += xStep
         }
 
-        if (segmentStart >= 0) segments.add(Segment(segmentStart, bitmap.width))
+        if (segmentStart >= 0) {
+            segments.add(Segment(segmentStart, bitmap.width))
+        }
 
         val best = segments.maxByOrNull { it.end - it.start }
-        if (best != null && best.end - best.start >= bitmap.width * 0.30f) {
+
+        if (
+            best != null &&
+            best.end - best.start >= bitmap.width * 0.30f
+        ) {
             val width = best.end - best.start
-            val padding = max(4, (width * 0.015f).toInt())
+            val pad = max(3, (width * 0.008f).toInt())
+
             return HorizontalBounds(
-                left = (best.start + padding).coerceIn(0, bitmap.width - 1),
-                right = (best.end - padding).coerceIn(1, bitmap.width)
+                left =
+                    (best.start + pad).coerceIn(
+                        0,
+                        bitmap.width - 1
+                    ),
+                right =
+                    (best.end - pad).coerceIn(
+                        1,
+                        bitmap.width
+                    )
             )
         }
 
@@ -149,43 +186,65 @@ class VisionAnalyzer {
         top: Int,
         right: Int,
         bottom: Int,
-        areaWidth: Int
+        viewportWidth: Int
     ): List<Candidate> {
-        val step = max(22, areaWidth / 18)
-        val radius = max(20, areaWidth / 20)
+        val step = max(18, viewportWidth / 34)
+        val saliencyRadius = max(18, viewportWidth / 34)
         val raw = ArrayList<Triple<Int, Int, Float>>()
 
-        var y = top + radius
-        while (y < bottom - radius) {
-            var x = left + radius
-            while (x < right - radius) {
-                val score = localSaliency(bitmap, x, y, radius)
-                if (score > 22f) raw.add(Triple(x, y, score))
+        var y = top + saliencyRadius
+
+        while (y < bottom - saliencyRadius) {
+            var x = left + saliencyRadius
+
+            while (x < right - saliencyRadius) {
+                val score =
+                    localSaliency(
+                        bitmap,
+                        x,
+                        y,
+                        saliencyRadius
+                    )
+
+                if (score > 20f) {
+                    raw.add(Triple(x, y, score))
+                }
+
                 x += step
             }
+
             y += step
         }
 
         raw.sortByDescending { it.third }
 
         val selected = ArrayList<Candidate>()
-        val minDistance = max(80f, areaWidth / 9.5f)
-        val maxCandidates = 32
+        val minDistance = max(34f, viewportWidth / 19f)
+        val maxCandidates = 58
 
-        for ((x, yy, saliency) in raw) {
+        for ((x, y, saliency) in raw) {
             if (selected.size >= maxCandidates) break
 
-            val tooClose = selected.any { c ->
-                distance(c.x, c.y, x, yy) < minDistance
+            if (
+                selected.any { c ->
+                    distance(c.x, c.y, x, y) < minDistance
+                }
+            ) {
+                continue
             }
-            if (tooClose) continue
 
             selected.add(
                 Candidate(
                     x = x,
-                    y = yy,
+                    y = y,
                     saliency = saliency,
-                    descriptor = buildDescriptor(bitmap, x, yy, areaWidth)
+                    descriptor =
+                        buildDescriptor(
+                            bitmap,
+                            x,
+                            y,
+                            viewportWidth
+                        )
                 )
             )
         }
@@ -193,65 +252,124 @@ class VisionAnalyzer {
         return selected
     }
 
-    private fun localSaliency(bitmap: Bitmap, cx: Int, cy: Int, radius: Int): Float {
+    private fun localSaliency(
+        bitmap: Bitmap,
+        cx: Int,
+        cy: Int,
+        radius: Int
+    ): Float {
         val stride = max(3, radius / 6)
-        var sum = 0f
-        var sumSq = 0f
-        var edges = 0f
+        var sumLum = 0f
+        var sumLumSq = 0f
+        var edgeTotal = 0f
+        var saturationTotal = 0f
         var count = 0
 
         var y = cy - radius
+
         while (y <= cy + radius) {
             var x = cx - radius
+
             while (x <= cx + radius) {
-                val px = x.coerceIn(0, bitmap.width - 1)
-                val py = y.coerceIn(0, bitmap.height - 1)
-                val lum = luminance(bitmap.getPixel(px, py))
+                val px =
+                    x.coerceIn(
+                        0,
+                        bitmap.width - 1
+                    )
+                val py =
+                    y.coerceIn(
+                        0,
+                        bitmap.height - 1
+                    )
 
-                sum += lum
-                sumSq += lum * lum
+                val color = bitmap.getPixel(px, py)
+                val lum = luminance(color)
 
-                val x2 = min(bitmap.width - 1, px + stride)
-                val y2 = min(bitmap.height - 1, py + stride)
-                edges += abs(lum - luminance(bitmap.getPixel(x2, py)))
-                edges += abs(lum - luminance(bitmap.getPixel(px, y2)))
+                sumLum += lum
+                sumLumSq += lum * lum
+                saturationTotal += saturation(color)
+
+                val x2 =
+                    min(
+                        bitmap.width - 1,
+                        px + stride
+                    )
+                val y2 =
+                    min(
+                        bitmap.height - 1,
+                        py + stride
+                    )
+
+                edgeTotal +=
+                    abs(
+                        lum -
+                            luminance(
+                                bitmap.getPixel(
+                                    x2,
+                                    py
+                                )
+                            )
+                    )
+
+                edgeTotal +=
+                    abs(
+                        lum -
+                            luminance(
+                                bitmap.getPixel(
+                                    px,
+                                    y2
+                                )
+                            )
+                    )
+
                 count++
-
                 x += stride
             }
+
             y += stride
         }
 
         if (count == 0) return 0f
 
-        val mean = sum / count
-        val variance = max(0f, sumSq / count - mean * mean)
+        val mean = sumLum / count
+        val variance =
+            max(
+                0f,
+                sumLumSq / count -
+                    mean * mean
+            )
         val std = sqrt(variance)
-        val edgeMean = edges / (count * 2f)
+        val edgeMean =
+            edgeTotal /
+                (count * 2f)
+        val satMean =
+            saturationTotal /
+                count
 
-        return std * 0.65f + edgeMean * 0.35f
+        return
+            std * 0.52f +
+                edgeMean * 0.33f +
+                satMean * 18f
     }
 
-    /**
-     * Compact descriptor tuned on the user's Match Factory screenshot:
-     * three relatively small RGB histograms + local mean/std colour statistics.
-     *
-     * Keeping the windows compact is important: the v0.1 wide windows included
-     * neighbouring toys/background and made unrelated areas appear similar.
-     */
     private fun buildDescriptor(
         bitmap: Bitmap,
         cx: Int,
         cy: Int,
-        areaWidth: Int
+        viewportWidth: Int
     ): FloatArray {
-        val scales = intArrayOf(
-            max(16, areaWidth / 40),
-            max(22, areaWidth / 30),
-            max(30, areaWidth / 22)
-        )
+        val scales =
+            intArrayOf(
+                max(15, viewportWidth / 48),
+                max(22, viewportWidth / 35),
+                max(30, viewportWidth / 26)
+            )
 
-        val out = FloatArray(64 * scales.size + 6)
+        val out =
+            FloatArray(
+                64 * scales.size + 24
+            )
+
         var offset = 0
 
         for (radius in scales) {
@@ -260,87 +378,233 @@ class VisionAnalyzer {
             var samples = 0
 
             var y = cy - radius
+
             while (y <= cy + radius) {
                 var x = cx - radius
+
                 while (x <= cx + radius) {
-                    if (x in 0 until bitmap.width && y in 0 until bitmap.height) {
-                        val c = bitmap.getPixel(x, y)
-                        val r = (c shr 16) and 0xff
-                        val g = (c shr 8) and 0xff
-                        val b = c and 0xff
+                    if (
+                        x in 0 until bitmap.width &&
+                        y in 0 until bitmap.height
+                    ) {
+                        val c =
+                            bitmap.getPixel(
+                                x,
+                                y
+                            )
+
+                        val r =
+                            (c shr 16) and 0xff
+                        val g =
+                            (c shr 8) and 0xff
+                        val b =
+                            c and 0xff
 
                         val rb = r ushr 6
                         val gb = g ushr 6
                         val bb = b ushr 6
-                        hist[(rb shl 4) or (gb shl 2) or bb] += 1f
+
+                        hist[
+                            (rb shl 4) or
+                                (gb shl 2) or
+                                bb
+                        ] += 1f
+
                         samples++
                     }
+
                     x += stride
                 }
+
                 y += stride
             }
 
             if (samples > 0) {
                 for (i in hist.indices) {
-                    out[offset + i] = hist[i] / samples.toFloat()
+                    out[offset + i] =
+                        hist[i] /
+                            samples.toFloat()
                 }
             }
+
             offset += 64
         }
 
-        val statRadius = max(18, areaWidth / 26)
-        val stride = max(2, statRadius / 8)
+        val radialRadius =
+            max(
+                28,
+                viewportWidth / 27
+            )
+        val radialStride =
+            max(
+                2,
+                radialRadius / 10
+            )
 
-        var sumR = 0f
-        var sumG = 0f
-        var sumB = 0f
-        var sumRR = 0f
-        var sumGG = 0f
-        var sumBB = 0f
-        var count = 0
+        val ringCount = IntArray(3)
+        val sumR = FloatArray(3)
+        val sumG = FloatArray(3)
+        val sumB = FloatArray(3)
+        val sumSat = FloatArray(3)
+        val sumLum = FloatArray(3)
+        val sumLumSq = FloatArray(3)
+        val sumEdge = FloatArray(3)
+        val darkCount = IntArray(3)
 
-        var y = cy - statRadius
-        while (y <= cy + statRadius) {
-            var x = cx - statRadius
-            while (x <= cx + statRadius) {
-                if (x in 0 until bitmap.width && y in 0 until bitmap.height) {
-                    val c = bitmap.getPixel(x, y)
-                    val r = ((c shr 16) and 0xff) / 255f
-                    val g = ((c shr 8) and 0xff) / 255f
-                    val b = (c and 0xff) / 255f
+        var y = cy - radialRadius
 
-                    sumR += r
-                    sumG += g
-                    sumB += b
-                    sumRR += r * r
-                    sumGG += g * g
-                    sumBB += b * b
-                    count++
+        while (y <= cy + radialRadius) {
+            var x = cx - radialRadius
+
+            while (x <= cx + radialRadius) {
+                if (
+                    x in 0 until bitmap.width &&
+                    y in 0 until bitmap.height
+                ) {
+                    val dx =
+                        (x - cx).toFloat()
+                    val dy =
+                        (y - cy).toFloat()
+                    val d =
+                        sqrt(
+                            dx * dx +
+                                dy * dy
+                        )
+
+                    if (d <= radialRadius) {
+                        val norm =
+                            d /
+                                radialRadius
+
+                        val ring =
+                            when {
+                                norm < 0.34f -> 0
+                                norm < 0.68f -> 1
+                                else -> 2
+                            }
+
+                        val c =
+                            bitmap.getPixel(
+                                x,
+                                y
+                            )
+
+                        val r =
+                            ((c shr 16) and 0xff) /
+                                255f
+                        val g =
+                            ((c shr 8) and 0xff) /
+                                255f
+                        val b =
+                            (c and 0xff) /
+                                255f
+                        val lum =
+                            luminance(c) /
+                                255f
+
+                        sumR[ring] += r
+                        sumG[ring] += g
+                        sumB[ring] += b
+                        sumSat[ring] +=
+                            saturation(c)
+                        sumLum[ring] += lum
+                        sumLumSq[ring] +=
+                            lum * lum
+
+                        if (lum < 0.20f) {
+                            darkCount[ring]++
+                        }
+
+                        val x2 =
+                            min(
+                                bitmap.width - 1,
+                                x + radialStride
+                            )
+                        val y2 =
+                            min(
+                                bitmap.height - 1,
+                                y + radialStride
+                            )
+
+                        val edge =
+                            abs(
+                                luminance(c) -
+                                    luminance(
+                                        bitmap.getPixel(
+                                            x2,
+                                            y
+                                        )
+                                    )
+                            ) +
+                                abs(
+                                    luminance(c) -
+                                        luminance(
+                                            bitmap.getPixel(
+                                                x,
+                                                y2
+                                            )
+                                        )
+                                )
+
+                        sumEdge[ring] +=
+                            edge / 510f
+                        ringCount[ring]++
+                    }
                 }
-                x += stride
+
+                x += radialStride
             }
-            y += stride
+
+            y += radialStride
         }
 
-        if (count > 0) {
-            val n = count.toFloat()
-            val mr = sumR / n
-            val mg = sumG / n
-            val mb = sumB / n
+        for (ring in 0..2) {
+            val n =
+                ringCount[ring]
+                    .coerceAtLeast(1)
+                    .toFloat()
 
-            out[offset] = mr
-            out[offset + 1] = mg
-            out[offset + 2] = mb
-            out[offset + 3] = sqrt(max(0f, sumRR / n - mr * mr))
-            out[offset + 4] = sqrt(max(0f, sumGG / n - mg * mg))
-            out[offset + 5] = sqrt(max(0f, sumBB / n - mb * mb))
+            val meanLum =
+                sumLum[ring] / n
+
+            val base =
+                offset +
+                    ring * 8
+
+            out[base] =
+                sumR[ring] / n
+            out[base + 1] =
+                sumG[ring] / n
+            out[base + 2] =
+                sumB[ring] / n
+            out[base + 3] =
+                sumSat[ring] / n
+            out[base + 4] =
+                meanLum
+            out[base + 5] =
+                sqrt(
+                    max(
+                        0f,
+                        sumLumSq[ring] /
+                            n -
+                            meanLum *
+                                meanLum
+                    )
+                )
+            out[base + 6] =
+                sumEdge[ring] / n
+            out[base + 7] =
+                darkCount[ring] / n
         }
 
         normalize(out)
         return out
     }
 
-    private fun similarity(a: FloatArray, b: FloatArray): Float {
+    private fun similarity(
+        a: FloatArray,
+        b: FloatArray
+    ): Float {
         var dot = 0f
         var aa = 0f
         var bb = 0f
@@ -351,30 +615,100 @@ class VisionAnalyzer {
             bb += b[i] * b[i]
         }
 
-        if (aa <= 1e-8f || bb <= 1e-8f) return 0f
-        return (dot / sqrt(aa * bb)).coerceIn(0f, 1f)
+        if (
+            aa <= 1e-8f ||
+            bb <= 1e-8f
+        ) {
+            return 0f
+        }
+
+        return
+            (
+                dot /
+                    sqrt(aa * bb)
+                ).coerceIn(
+                0f,
+                1f
+            )
     }
 
     private fun normalize(v: FloatArray) {
         var sum = 0f
-        for (x in v) sum += x * x
+
+        for (value in v) {
+            sum +=
+                value * value
+        }
 
         val norm = sqrt(sum)
+
         if (norm <= 1e-8f) return
 
-        for (i in v.indices) v[i] /= norm
+        for (i in v.indices) {
+            v[i] /= norm
+        }
     }
 
     private fun luminance(color: Int): Float {
-        val r = (color shr 16) and 0xff
-        val g = (color shr 8) and 0xff
-        val b = color and 0xff
-        return 0.2126f * r + 0.7152f * g + 0.0722f * b
+        val r =
+            (color shr 16) and 0xff
+        val g =
+            (color shr 8) and 0xff
+        val b =
+            color and 0xff
+
+        return
+            0.2126f * r +
+                0.7152f * g +
+                0.0722f * b
     }
 
-    private fun distance(x1: Int, y1: Int, x2: Int, y2: Int): Float {
-        val dx = (x1 - x2).toFloat()
-        val dy = (y1 - y2).toFloat()
-        return sqrt(dx * dx + dy * dy)
+    private fun saturation(color: Int): Float {
+        val r =
+            ((color shr 16) and 0xff) /
+                255f
+        val g =
+            ((color shr 8) and 0xff) /
+                255f
+        val b =
+            (color and 0xff) /
+                255f
+
+        val hi =
+            max(
+                r,
+                max(g, b)
+            )
+
+        val lo =
+            min(
+                r,
+                min(g, b)
+            )
+
+        return
+            if (hi <= 1e-6f) {
+                0f
+            } else {
+                (hi - lo) / hi
+            }
+    }
+
+    private fun distance(
+        x1: Int,
+        y1: Int,
+        x2: Int,
+        y2: Int
+    ): Float {
+        val dx =
+            (x1 - x2).toFloat()
+        val dy =
+            (y1 - y2).toFloat()
+
+        return
+            sqrt(
+                dx * dx +
+                    dy * dy
+            )
     }
 }
